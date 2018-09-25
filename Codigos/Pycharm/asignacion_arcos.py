@@ -1,11 +1,9 @@
 import pandas as pd
-import numpy as np
-import math
-from numpy import *
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
+import numpy as np
+import math
 
 
 class Arrow3D(FancyArrowPatch):
@@ -23,16 +21,23 @@ class Arrow3D(FancyArrowPatch):
 
 input_path = '../Daniel_inputs/block_model.csv'
 MB = pd.read_csv(input_path)
+ejex_MB = MB.sort_values(by=['xcentre'], ascending=False)[['xcentre']]
+ejey_MB = MB.sort_values(by=['ycentre'], ascending=False)[['ycentre']]
+ejez_MB = MB.sort_values(by=['zcentre'], ascending=False)[['zcentre']]
+pos_x_MB = np.unique(ejex_MB.values)
+pos_y_MB = np.unique(ejey_MB.values)
+pos_z_MB = np.unique(ejez_MB.values)
 
 # recuperar las dimensiones del modelo de bloques
 # se utilizan las dimensiones en todas las direcciones
 # para determinar el conjunto de aracos. Considerar
 # primero una cantidad mas pequeña de bloques, i.e. de niveles
 # en el eje z
+N = 4  # numero de ptos pos dimension
 MB_sorted = MB.sort_values(by=['zcentre'], ascending=False)
-MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < 447.5]
-MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < 72660]
-MB_sorted = MB_sorted.loc[MB_sorted['ycentre'] < 477960]
+MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[N]]
+MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[N]]
+MB_sorted = MB_sorted.loc[MB_sorted['ycentre'] < pos_y_MB[N]]
 
 pos_z = MB_sorted[['zcentre']].values
 pos_x = MB_sorted[['xcentre']].values
@@ -78,10 +83,6 @@ for k in range(1, numz + 1):
     for i in range(1, numx + 1):
         for j in range(1, numy + 1):
             for t in range(1, k):
-                # dx1 = (k-t)*zdim/np.tan(theta_w)
-                # dy1 = (k-t)*zdim/np.tan(theta_s)
-                # dx2 = (k-t)*zdim/np.tan(theta_e)
-                # dy2 = (k-t)*zdim/np.tan(theta_n)
 
                 dx1 = t * zdim / np.tan(theta_w)
                 dy1 = t * zdim / np.tan(theta_s)
@@ -116,7 +117,7 @@ for k in range(1, numz + 1):
                         if Value <= 1:
                             arcos.append([(i, j, k), (m, n, k - t)])
 
-bloque_base = (3, 2, 3)
+bloque_base = (3, 2, 3)  # bloque base para plotear
 sacar = []
 for arco in arcos:
     bloque_tail = arco[0]
@@ -125,6 +126,7 @@ for arco in arcos:
         sacar.append(bloque_head)
 print(sacar)
 
+# graficar resultados de la asignacion
 MB_grafico = MB_sorted[['xcentre', 'ycentre', 'zcentre']]-(min(MB_sorted[['xcentre']].values),
                                                            min(MB_sorted[['ycentre']].values),
                                                            min(MB_sorted[['zcentre']].values))
@@ -132,15 +134,17 @@ ejex = MB_grafico[['xcentre']]
 ejey = MB_grafico[['ycentre']]
 ejez = MB_grafico[['zcentre']]
 
-fig = plt.figure(figsize=(20, 10))
+fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 plt.gca().invert_zaxis()
 
 for v in sacar:
-    # ax.plot([mean_x,v[0]], [mean_y,v[1]], [mean_z,v[2]], color='red', alpha=0.8, lw=3)
-    # I will replace this line with:
     a = Arrow3D([(bloque_base[0]-1)*20, (v[0]-1)*20], [(bloque_base[1]-1)*20, (v[1]-1)*20],
                 [(bloque_base[2]-1)*15, (v[2]-1)*15], mutation_scale=20,
                 lw=3, arrowstyle="-|>", color="r")
     ax.add_artist(a)
 ax.scatter(ejex, ejey, ejez, s=80)
+
+# LG para MB_sorted (i.e. que tiene bastantes menos nodos)
+
+plt.show()
