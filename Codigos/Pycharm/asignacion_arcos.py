@@ -5,6 +5,7 @@ from mpl_toolkits.mplot3d import proj3d
 import numpy as np
 import math
 
+
 class Arrow3D(FancyArrowPatch):
 
     def __init__(self, xs, ys, zs, *args, **kwargs):
@@ -32,7 +33,7 @@ pos_z_MB = np.unique(ejez_MB.values)
 # para determinar el conjunto de aracos. Considerar
 # primero una cantidad mas pequeña de bloques, i.e. de niveles
 # en el eje z
-N = 10  # numero de ptos pos dimension
+N = 5  # numero de ptos pos dimension
 MB_sorted = MB.sort_values(by=['zcentre'], ascending=False)
 MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[N]]
 MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[N]]
@@ -115,8 +116,8 @@ S = {}
 for i in range(1, numx + 1):
     for j in range(1, numy + 1):
         S[(i, j, 1)] = []
-for k in range(1,numz + 1):
-#for k in range(numz, 0, -1):
+for k in range(1, numz + 1):
+    #for k in range(numz, 0, -1):
     for i in range(1, numx + 1):
         for j in range(1, numy + 1):
             lista_predecesores = []
@@ -134,13 +135,13 @@ for k in range(1,numz + 1):
                 for m in range(max(math.floor(i - m2), 1), min(numx, math.ceil(i + m1)) + 1):
                     for n in range(max(math.floor(j - n2), 1), min(numy, math.ceil(j + n1)) + 1):
                         if k > 2 and t > 1:
-                            if n == j and (m+1,j,k-t+1) in S and (m,j,k-t) in S[(m+1,j,k-t+1)]:
+                            if n == j and (m+1, j, k-t+1) in S and (m, j, k-t) in S[(m+1, j, k-t+1)]:
                                 continue
-                            elif n == j and (m-1,j,k-t+1) in S and (m,j,k-t) in S[(m-1,j,k-t+1)]:
+                            elif n == j and (m-1, j, k-t+1) in S and (m, j, k-t) in S[(m-1, j, k-t+1)]:
                                 continue
-                            elif m == i and (i,n+1,k-t+1) in S and (i,n,k-t) in S[(i,n+1,k-t+1)]:
+                            elif m == i and (i, n+1, k-t+1) in S and (i, n, k-t) in S[(i, n+1, k-t+1)]:
                                 continue
-                            elif m == i and (i,n-1,k-t+1) in S and (i,n,k-t) in S[(i,n-1,k-t+1)]:
+                            elif m == i and (i, n-1, k-t+1) in S and (i, n, k-t) in S[(i, n-1, k-t+1)]:
                                 continue
                         a = xdim * (i - m)
                         b = ydim * (j - n)
@@ -158,14 +159,12 @@ for k in range(1,numz + 1):
                             lista_predecesores.append((m, n, k - t))
             S[(i, j, k)] = lista_predecesores
 
+#-------------------------------------------------------
+#------------ Graficar arcos de precedencia ------------
+#-------------------------------------------------------
 
-
-#########################################################
-############ Graficar arcos de precedencia ##############
-#########################################################
-
-bloque_base_1 = (3, 4, 2)  # bloque base para plotear
-bloque_base_2 = (4, 2, 4)
+bloque_base_1 = (2, 1, 3)  # bloque base para plotear
+bloque_base_2 = (4, 2, 5)
 # sacar = []
 # for arco in arcos:
 #     bloque_tail = arco[0]
@@ -179,15 +178,25 @@ bloque_base_2 = (4, 2, 4)
 # for (p,q,z) in S[bloque_base_1]:
 #     if (p,q,z) in S[bloque_base_2]:
 #         S[bloque_base_2].remove((p,q,z))
-# ahora para todos los bloques
-for i in range(1,numx+1):
+# ahora para todos los bloques, se sacan los arcos redundantes
+for i in range(1, numx+1):
     for j in range(1, numy + 1):
         for k in range(1, numz + 1):
-            for (p,q,z) in [(i+1,j,k-1),(i-1,j,k-1),(i,j+1,k-1),(i,j-1,k-1),(i,j,k-1)]:
-                if (p,q,z) in S:
-                    for (w,t,h) in S[(p,q,z)]:
-                        if (w,t,h) in S[(i,j,k)]:
-                            S[(i,j,k)].remove((w,t,h))
+            for (p, q, z) in [(i+1, j, k-1), (i-1, j, k-1), (i, j+1, k-1), (i, j-1, k-1), (i, j, k-1)]:
+                if (p, q, z) in S:
+                    for (w, t, h) in S[(p, q, z)]:
+                        if (w, t, h) in S[(i, j, k)]:
+                            S[(i, j, k)].remove((w, t, h))
+
+#-------------------------------------------------------
+#------------ Escribir arcos de precedencia ------------
+#-------------------------------------------------------
+
+for i in (1, numx+1):
+    for j in (1, numy + 1):
+        for k in (1, numz + 1):
+            id_ijk = (k-1)*i*j + i*(j-1) + i
+
 
 MB_grafico = MB_sorted[['xcentre', 'ycentre', 'zcentre']]-(min(MB_sorted[['xcentre']].values),
                                                            min(MB_sorted[['ycentre']].values),
