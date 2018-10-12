@@ -4,6 +4,7 @@ from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
 import numpy as np
 import math
+import time
 
 
 class Arrow3D(FancyArrowPatch):
@@ -18,9 +19,11 @@ class Arrow3D(FancyArrowPatch):
         self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
         FancyArrowPatch.draw(self, renderer)
 
-
 input_path = '../Daniel_inputs/block_model.csv'
+#input_path = '../Blasor_inputs_fases/BINPHA_OA20.csv'
+#MB = pd.read_csv(input_path, sep=';', usecols=['xcentre', 'ycentre', 'zcentre'], dtype=float, decimal=',')
 MB = pd.read_csv(input_path)
+print(list(MB))
 ejex_MB = MB.sort_values(by=['xcentre'], ascending=False)[['xcentre']]
 ejey_MB = MB.sort_values(by=['ycentre'], ascending=False)[['ycentre']]
 ejez_MB = MB.sort_values(by=['zcentre'], ascending=False)[['zcentre']]
@@ -30,14 +33,23 @@ pos_z_MB = np.unique(ejez_MB.values)
 
 # recuperar las dimensiones del modelo de bloques
 # se utilizan las dimensiones en todas las direcciones
-# para determinar el conjunto de aracos. Considerar
+# para determinar el conjunto de arcos. Considerar
 # primero una cantidad mas pequeña de bloques, i.e. de niveles
 # en el eje z
-N = 5  # numero de ptos pos dimension
+#N = 10
+Nx = 100# numero de ptos pos dimension
+Ny = 10
+Nz = 50
 MB_sorted = MB.sort_values(by=['zcentre'], ascending=False)
-MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[N]]
-MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[N]]
-MB_sorted = MB_sorted.loc[MB_sorted['ycentre'] < pos_y_MB[N]]
+# MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[N]]
+# MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[N]]
+# MB_sorted = MB_sorted.loc[MB_sorted['ycentre'] < pos_y_MB[N]]
+
+MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[Nz]]
+MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[Nx]]
+MB_sorted = MB_sorted.loc[MB_sorted['ycentre'] < pos_y_MB[Ny]]
+
+
 
 pos_z = MB_sorted[['zcentre']].values
 pos_x = MB_sorted[['xcentre']].values
@@ -116,6 +128,7 @@ S = {}
 for i in range(1, numx + 1):
     for j in range(1, numy + 1):
         S[(i, j, 1)] = []
+init_time = time.time()
 for k in range(1, numz + 1):
     #for k in range(numz, 0, -1):
     for i in range(1, numx + 1):
@@ -159,12 +172,10 @@ for k in range(1, numz + 1):
                             lista_predecesores.append((m, n, k - t))
             S[(i, j, k)] = lista_predecesores
 
-#-------------------------------------------------------
-#------------ Graficar arcos de precedencia ------------
-#-------------------------------------------------------
+print('\n############################################\n')
+print('     Tiempo determiar vecinos: %.2f' % (time.time()-init_time))
+print('\n############################################\n')
 
-bloque_base_1 = (2, 1, 3)  # bloque base para plotear
-bloque_base_2 = (4, 2, 5)
 # sacar = []
 # for arco in arcos:
 #     bloque_tail = arco[0]
@@ -179,6 +190,10 @@ bloque_base_2 = (4, 2, 5)
 #     if (p,q,z) in S[bloque_base_2]:
 #         S[bloque_base_2].remove((p,q,z))
 # ahora para todos los bloques, se sacan los arcos redundantes
+#-----------------------------------------------------
+#-------- Dejar solo los vecinos inmediatos ----------
+#-----------------------------------------------------
+init_time = time.time()
 for i in range(1, numx+1):
     for j in range(1, numy + 1):
         for k in range(1, numz + 1):
@@ -187,16 +202,34 @@ for i in range(1, numx+1):
                     for (w, t, h) in S[(p, q, z)]:
                         if (w, t, h) in S[(i, j, k)]:
                             S[(i, j, k)].remove((w, t, h))
-
+print('\n############################################\n')
+print('     Tiempo determiar vecino inmediato: %.2f' % (time.time()-init_time))
+print('\n############################################\n')
 #-------------------------------------------------------
 #------------ Escribir arcos de precedencia ------------
 #-------------------------------------------------------
+# precedencias = pd.DataFrame(columns=['tail_i', 'tail_j', 'tail_k','head_i', 'head_j', 'head_k'])
+# index = 0
+# init_time = time.time()
+# for k in range(1, numz+1):
+#     for i in range(1, numx + 1):
+#         for j in range(1, numy + 1):
+#             if (i, j, k) in S:
+#                 print('Escribiendo precedencia para: (%.1d,%.1d,%.1d)' % (i, j, k))
+#                 for (p, q, z) in S[(i, j, k)]:
+#                     precedencias.loc[index] = [i, j, k, p, q, z]
+#                     index += 1
+# precedencias.to_csv(path_or_buf='../Blasor_inputs_fases/presedencias.csv', index=False)
+# print('\n############################################\n')
+# print('     Tiempo escritura: %.2f' % (time.time()-init_time))
+# print('\n############################################\n')
 
-for i in (1, numx+1):
-    for j in (1, numy + 1):
-        for k in (1, numz + 1):
-            id_ijk = (k-1)*i*j + i*(j-1) + i
+#-------------------------------------------------------
+#------------ Graficar arcos de precedencia ------------
+#-------------------------------------------------------
 
+bloque_base_1 = (2, 1, 4)  # bloque base para plotear
+bloque_base_2 = (2, 2, 5)
 
 MB_grafico = MB_sorted[['xcentre', 'ycentre', 'zcentre']]-(min(MB_sorted[['xcentre']].values),
                                                            min(MB_sorted[['ycentre']].values),
