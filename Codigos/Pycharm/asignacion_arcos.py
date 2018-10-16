@@ -37,9 +37,9 @@ pos_z_MB = np.unique(ejez_MB.values)
 # primero una cantidad mas pequeña de bloques, i.e. de niveles
 # en el eje z
 #N = 10
-Nx = 100# numero de ptos pos dimension
-Ny = 10
-Nz = 50
+Nx = 5# numero de ptos pos dimension
+Ny = 5
+Nz = 5
 MB_sorted = MB.sort_values(by=['zcentre'], ascending=False)
 # MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[N]]
 # MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[N]]
