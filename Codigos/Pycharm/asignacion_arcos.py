@@ -5,6 +5,7 @@ from mpl_toolkits.mplot3d import proj3d
 import numpy as np
 import math
 import time
+import copy as cp
 
 
 class Arrow3D(FancyArrowPatch):
@@ -37,9 +38,9 @@ pos_z_MB = np.unique(ejez_MB.values)
 # primero una cantidad mas pequeña de bloques, i.e. de niveles
 # en el eje z
 #N = 10
-Nx = 5# numero de ptos pos dimension
-Ny = 5
-Nz = 5
+Nx = 6# numero de ptos pos dimension
+Ny = 1
+Nz = 3
 MB_sorted = MB.sort_values(by=['zcentre'], ascending=False)
 # MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[N]]
 # MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[N]]
@@ -75,8 +76,8 @@ print('numz: ', numz)
 # determinar dimensiones del modelo de bloques
 zdim = pos_z_unique[1]-pos_z_unique[0]
 xdim = pos_x_unique[1]-pos_x_unique[0]
-ydim = pos_y_unique[1]-pos_y_unique[0]
-
+#ydim = pos_y_unique[1]-pos_y_unique[0]
+ydim = 20
 print('xdim: ', xdim)
 print('ydim: ', ydim)
 print('zdim: ', zdim)
@@ -229,8 +230,137 @@ print('\n############################################\n')
 #------------ Graficar arcos de precedencia ------------
 #-------------------------------------------------------
 
-bloque_base_1 = (2, 1, 4)  # bloque base para plotear
-bloque_base_2 = (2, 2, 5)
+print('\n############################################\n')
+print('   Ejecutando Algoritmo de Lerchs & Grossmann  ')
+print('\n############################################\n')
+print('Inicialización...')
+S['vo'] = list()
+for j in range(1, numy+1):
+    for k in range(1, numz + 1):
+        for i in range(1, numx + 1):
+            S['vo'].append((i, j, k))
+pesos_paper = [-1, 1, 2, -1, 1, -1, -2, -1, 3, 4, -1, -2, -3, -2, 1, 2, -1, -2]
+w = dict()
+for j in range(1, numy+1):
+    for k in range(1, numz + 1):
+        for i in range(1, numx + 1):
+            w[(i, j, k)] = pesos_paper[i + (k-1)*numx-1]
+
+etiquetas = dict()
+for (p, q, z) in S['vo']:
+    etiquetas[('vo', (p, q, z))] = ['+', w[(p, q, z)]]
+
+Y = list()
+for j in range(1, numy+1):
+    for k in range(1, numz + 1):
+        for i in range(1, numx + 1):
+            if w[(i, j, k)] > 0:
+                Y.append((i, j, k))
+T = [('vo', (p, q, z)) for (p, q, z) in S['vo']]
+
+
+def test_opt(vertices):
+    for nodo in vertices:
+        for arco in S[nodo]:
+            if not arco[1] in vertices:
+                return v, arco[1]
+    return True
+
+
+def encontrar_camino(origen, destino, arcosArbol, visitados, antecesor):
+    neighbors_origen = [g for (r, g) in arcosArbol if r == origen]
+    visitados = visitados.extend(neighbors_origen)
+    for vertice in neighbors_origen:
+        antecesor[vertice] = origen
+    if destino in visitados:
+        return antecesor
+    else:
+        vecino = visitados.pop()
+        encontrar_camino(vecino, destino, arcosArbol, visitados, antecesor)
+
+
+def obtener_rama(raiz, arcosArbol, visitados, alcanzables):
+    return []
+
+
+while True:
+    # verificar optimalidad
+    if test_opt(Y) is True:
+        break
+    # si no se tiene, actualizar arbol
+    (vk, vl) = test_opt(Y)
+    # encontrar vo-vk camino y vovl camino en T
+    vistos = []
+    pi = {}
+    vo_vk_camino = encontrar_camino('vo', vk, T, vistos, pi)
+    vo_vk_camino_vertices = []
+    nodo = vk
+    # encontrar nodo del camino conectado a la raiz
+    vm = cp.copy(vk)
+    aristas_vo_vk_camino = []
+    while not nodo == 'vo':
+        vm = vo_vk_camino[nodo]
+        aristas_vo_vk_camino.extend([(vm, nodo)])
+        nodo = vm
+    vistos = []
+    pi = {}
+    vo_vl_camino = encontrar_camino('vo', vl, T, vistos, pi)
+    vn = cp.copy(vl)
+    aristas_vl_vo_camino = []
+    while not nodo == 'vo':
+        vn = vo_vl_camino[nodo]
+        aristas_vl_vo_camino.extend([(vn, nodo)])
+        nodo = vn
+    aristas_vo_vk_camino.reverse()  # reverse para que el nombre tenga sentido
+    T.remove(('vo', vm))
+    T.extend([(vk, vl)])
+    T_prima = T.copy()
+    # actualizar etiquetas
+    etiquetas[(vk, vl)] = ('-', etiquetas[('vo', vm)][1])
+    for arista in aristas_vo_vk_camino[1:]:
+        etiqueta = etiquetas[arista]
+        if etiqueta[0] == '+':
+            etiquetas[arista] = ('-', etiquetas[('vo', vm)][1]-etiqueta[1])
+        else:
+            etiquetas[arista] = ('+', etiquetas[('vo', vm)][1]-etiqueta[1])
+    for arista in aristas_vl_vo_camino[1:]:
+        etiqueta = etiquetas[arista]
+        if etiqueta[0] == '+':
+            etiquetas[arista] = ('-', etiquetas[('vo', vn)][1]+etiqueta[1])
+        else:
+            etiquetas[arista] = ('+', etiquetas[('vo', vn)][1]+etiqueta[1])
+    # crear lista de aristas del camino vm-vo
+    aristas_vm_vo_camino = []
+    for arista in aristas_vo_vk_camino[1:]:
+        aristas_vm_vo_camino.append(arista)
+    for arista in aristas_vl_vo_camino:
+        aristas_vm_vo_camino.append(arista)
+    for inidice, arista in enumerate(aristas_vm_vo_camino):
+        etiqueta = etiquetas[arista]
+        if etiqueta[0] == '+' and etiqueta[1] > 0:  # preguntar si hay arco fuerte
+            T_prima.remove(arista)
+            T_prima.append(('vo', arista[1]))
+            for edge in aristas_vm_vo_camino[inidice+1:]:
+                w = etiquetas[edge][1]-etiquetas[arista][1]
+                if etiquetas[edge][0] == '+':
+                    etiquetas[edge] = ('+', w)
+                else:
+                    etiquetas[edge] = ('-', w)
+    # asignar a T el arbol normalizado
+    T = cp.copy(T_prima)
+    # recalcular el conjunto de nodos fuertes
+    arcos_fuertes = [arco for arco in T if arco[0] == 'vo' and etiquetas[arco][0] == '+' and etiquetas[arco][1] > 0]
+    Y = []
+    for arco in arcos_fuertes:
+        Y.extend(obtener_rama(arco, T))
+
+
+#############################################
+# Graficar resultados
+#############################################
+
+bloque_base_1 = (2, 1, 3)  # bloque base para plotear
+bloque_base_2 = (2, 1, 2)
 
 MB_grafico = MB_sorted[['xcentre', 'ycentre', 'zcentre']]-(min(MB_sorted[['xcentre']].values),
                                                            min(MB_sorted[['ycentre']].values),
