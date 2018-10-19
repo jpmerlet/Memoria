@@ -20,6 +20,7 @@ class Arrow3D(FancyArrowPatch):
         self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
         FancyArrowPatch.draw(self, renderer)
 
+
 input_path = '../Daniel_inputs/block_model.csv'
 #input_path = '../Blasor_inputs_fases/BINPHA_OA20.csv'
 #MB = pd.read_csv(input_path, sep=';', usecols=['xcentre', 'ycentre', 'zcentre'], dtype=float, decimal=',')
@@ -38,9 +39,9 @@ pos_z_MB = np.unique(ejez_MB.values)
 # primero una cantidad mas pequeña de bloques, i.e. de niveles
 # en el eje z
 #N = 10
-Nx = 6# numero de ptos pos dimension
+Nx = 4  # numero de ptos pos dimension
 Ny = 1
-Nz = 3
+Nz = 2
 MB_sorted = MB.sort_values(by=['zcentre'], ascending=False)
 # MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[N]]
 # MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[N]]
@@ -49,8 +50,6 @@ MB_sorted = MB.sort_values(by=['zcentre'], ascending=False)
 MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[Nz]]
 MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[Nx]]
 MB_sorted = MB_sorted.loc[MB_sorted['ycentre'] < pos_y_MB[Ny]]
-
-
 
 pos_z = MB_sorted[['zcentre']].values
 pos_x = MB_sorted[['xcentre']].values
@@ -240,11 +239,12 @@ for j in range(1, numy+1):
         for i in range(1, numx + 1):
             S['vo'].append((i, j, k))
 pesos_paper = [-1, 1, 2, -1, 1, -1, -2, -1, 3, 4, -1, -2, -3, -2, 1, 2, -1, -2]
+pesos_ejemplo = [1, 1, -1, -1, -100, 2, -1, -100]
 w = dict()
 for j in range(1, numy+1):
     for k in range(1, numz + 1):
         for i in range(1, numx + 1):
-            w[(i, j, k)] = pesos_paper[i + (k-1)*numx-1]
+            w[(i, j, k)] = pesos_ejemplo[i + (k-1)*numx-1]
 
 etiquetas = dict()
 for (p, q, z) in S['vo']:
@@ -260,16 +260,18 @@ T = [('vo', (p, q, z)) for (p, q, z) in S['vo']]
 
 
 def test_opt(vertices):
-    for nodo in vertices:
-        for arco in S[nodo]:
-            if not arco[1] in vertices:
-                return v, arco[1]
+    for vertice in vertices:
+        for vecino in S[vertice]:
+            if vecino not in vertices:
+                return vertice, vecino
     return True
 
 
 def encontrar_camino(origen, destino, arcosArbol, visitados, antecesor):
+    print('destino esta dado por', destino)
     neighbors_origen = [g for (r, g) in arcosArbol if r == origen]
-    visitados = visitados.extend(neighbors_origen)
+    visitados.extend(neighbors_origen)
+    print('vecinos visitados en encontrar camino', visitados)
     for vertice in neighbors_origen:
         antecesor[vertice] = origen
     if destino in visitados:
@@ -279,39 +281,54 @@ def encontrar_camino(origen, destino, arcosArbol, visitados, antecesor):
         encontrar_camino(vecino, destino, arcosArbol, visitados, antecesor)
 
 
-def obtener_rama(raiz, arcosArbol, visitados, alcanzables):
-    return []
+def obtener_rama(raiz, arcosArbol, nodos_fuertes):
+    vecinos = [vecino for (u, vecino) in arcosArbol if u == raiz]
+    if not vecinos:
+        nodos_fuertes.append(raiz)
+    else:
+        for vecino in vecinos:
+            nodos_fuertes.append(vecino)
+            nodos_fuertes.extend(obtener_rama(vecino, arcosArbol))
 
 
+print('Arbol de la inicializacion', T)
+print('Yo de la iniciailizacion', Y)
 while True:
     # verificar optimalidad
     if test_opt(Y) is True:
         break
     # si no se tiene, actualizar arbol
     (vk, vl) = test_opt(Y)
-    # encontrar vo-vk camino y vovl camino en T
+    # encontrar vo-vk camino y vo-vl camino en T
     vistos = []
     pi = {}
     vo_vk_camino = encontrar_camino('vo', vk, T, vistos, pi)
-    vo_vk_camino_vertices = []
-    nodo = vk
+    #print('arbol despues de encontrar vo-vk camino', T)
+    hoja_fuerte = cp.copy(vk)
     # encontrar nodo del camino conectado a la raiz
-    vm = cp.copy(vk)
+    padre_fuerte = vo_vk_camino[hoja_fuerte]
     aristas_vo_vk_camino = []
-    while not nodo == 'vo':
-        vm = vo_vk_camino[nodo]
-        aristas_vo_vk_camino.extend([(vm, nodo)])
-        nodo = vm
+    while not padre_fuerte == 'vo':
+        hoja_fuerte = padre_fuerte
+        padre_fuerte = vo_vk_camino[hoja_fuerte]
+        aristas_vo_vk_camino.extend([(padre_fuerte, hoja_fuerte)])
+    vm = cp.copy(hoja_fuerte)
     vistos = []
+    print('Arbol antes de retirar vm', T)
+    print('vm:', vm)
     pi = {}
     vo_vl_camino = encontrar_camino('vo', vl, T, vistos, pi)
-    vn = cp.copy(vl)
+    hoja_debil = cp.copy(vl)
+    padre_debil = vo_vl_camino[hoja_debil]
     aristas_vl_vo_camino = []
-    while not nodo == 'vo':
-        vn = vo_vl_camino[nodo]
-        aristas_vl_vo_camino.extend([(vn, nodo)])
-        nodo = vn
+    while not padre_debil == 'vo':
+        hoja_debil = padre_fuerte
+        padre_debil = vo_vl_camino[hoja_debil]
+        aristas_vl_vo_camino.extend([(padre_debil, hoja_debil)])
+    vn = cp.copy(hoja_debil)
     aristas_vo_vk_camino.reverse()  # reverse para que el nombre tenga sentido
+    print('Arbol antes de retirar vm', T)
+    print('vm:', vm)
     T.remove(('vo', vm))
     T.extend([(vk, vl)])
     T_prima = T.copy()
@@ -350,17 +367,20 @@ while True:
     T = cp.copy(T_prima)
     # recalcular el conjunto de nodos fuertes
     arcos_fuertes = [arco for arco in T if arco[0] == 'vo' and etiquetas[arco][0] == '+' and etiquetas[arco][1] > 0]
-    Y = []
+    print('etiquetas despues de normalizar son:', etiquetas)
+    Y = list()
+    print('Los arcos fuertes a agregar son:', arcos_fuertes)
+    print('arbol después de haber normalizado', T)
     for arco in arcos_fuertes:
-        Y.extend(obtener_rama(arco, T))
+        obtener_rama(arco[1], T, Y)
 
-
+print('los nodos a extraer son:', Y)
 #############################################
 # Graficar resultados
 #############################################
 
-bloque_base_1 = (2, 1, 3)  # bloque base para plotear
-bloque_base_2 = (2, 1, 2)
+bloque_base_1 = (2, 1, 2)  # bloque base para plotear
+bloque_base_2 = (3, 1, 2)
 
 MB_grafico = MB_sorted[['xcentre', 'ycentre', 'zcentre']]-(min(MB_sorted[['xcentre']].values),
                                                            min(MB_sorted[['ycentre']].values),
