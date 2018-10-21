@@ -268,10 +268,10 @@ def test_opt(vertices):
 
 
 def encontrar_camino(origen, destino, arcosArbol, visitados, antecesor):
-    print('destino esta dado por', destino)
-    neighbors_origen = [g for (r, g) in arcosArbol if r == origen]
+    # print('destino esta dado por', destino)
+    neighbors_origen = [g for (r, g) in arcosArbol if origen in (r, g) and g not in visitados]  # solo agrega los vecinos que salen!!!
     visitados.extend(neighbors_origen)
-    print('vecinos visitados en encontrar camino', visitados)
+    # print('vecinos visitados en encontrar camino', visitados)
     for vertice in neighbors_origen:
         antecesor[vertice] = origen
     if destino in visitados:
@@ -282,13 +282,18 @@ def encontrar_camino(origen, destino, arcosArbol, visitados, antecesor):
 
 
 def obtener_rama(raiz, arcosArbol, nodos_fuertes):
-    vecinos = [vecino for (u, vecino) in arcosArbol if u == raiz]
-    if not vecinos:
-        nodos_fuertes.append(raiz)
-    else:
+    vecinos = []
+    vecinos_salen = [vecino for (u, vecino) in arcosArbol if raiz in (u, vecino) and vecino not in nodos_fuertes and not vecino == 'vo']
+    vecinos_entran = [vecino for (vecino, u) in arcosArbol if raiz in (u, vecino) and vecino not in nodos_fuertes and not vecino == 'vo']
+    vecinos.extend(vecinos_entran)
+    vecinos.extend(vecinos_salen)
+    print('los vecinos para ')
+    # siempre estoy recuperando la cabeza!!!, falta arreglar eso
+    if vecinos:
         for vecino in vecinos:
-            nodos_fuertes.append(vecino)
-            nodos_fuertes.extend(obtener_rama(vecino, arcosArbol))
+            if vecino not in nodos_fuertes:
+                nodos_fuertes.append(vecino)
+            obtener_rama(vecino, arcosArbol, nodos_fuertes)
 
 
 print('Arbol de la inicializacion', T)
@@ -303,15 +308,17 @@ while True:
     vistos = []
     pi = {}
     vo_vk_camino = encontrar_camino('vo', vk, T, vistos, pi)
-    #print('arbol despues de encontrar vo-vk camino', T)
+    # print('arbol despues de encontrar vo-vk camino', T)
     hoja_fuerte = cp.copy(vk)
     # encontrar nodo del camino conectado a la raiz
     padre_fuerte = vo_vk_camino[hoja_fuerte]
-    aristas_vo_vk_camino = []
+    print('padre fuerte inicializacion', padre_fuerte)
+    aristas_vo_vk_camino = [(padre_fuerte, hoja_fuerte)]
     while not padre_fuerte == 'vo':
         hoja_fuerte = padre_fuerte
         padre_fuerte = vo_vk_camino[hoja_fuerte]
         aristas_vo_vk_camino.extend([(padre_fuerte, hoja_fuerte)])
+    print('El vo-vk camino es:', aristas_vo_vk_camino)
     vm = cp.copy(hoja_fuerte)
     vistos = []
     print('Arbol antes de retirar vm', T)
@@ -320,32 +327,35 @@ while True:
     vo_vl_camino = encontrar_camino('vo', vl, T, vistos, pi)
     hoja_debil = cp.copy(vl)
     padre_debil = vo_vl_camino[hoja_debil]
-    aristas_vl_vo_camino = []
+    aristas_vl_vo_camino = [(padre_debil, hoja_debil)]
     while not padre_debil == 'vo':
         hoja_debil = padre_fuerte
         padre_debil = vo_vl_camino[hoja_debil]
         aristas_vl_vo_camino.extend([(padre_debil, hoja_debil)])
     vn = cp.copy(hoja_debil)
     aristas_vo_vk_camino.reverse()  # reverse para que el nombre tenga sentido
+    print('El vl-vo camino es:', aristas_vl_vo_camino)
     print('Arbol antes de retirar vm', T)
-    print('vm:', vm)
+    print('vn:', vn)
     T.remove(('vo', vm))
     T.extend([(vk, vl)])
     T_prima = T.copy()
-    # actualizar etiquetas
+    # actualizar etiquetas: STEP 3
     etiquetas[(vk, vl)] = ('-', etiquetas[('vo', vm)][1])
+    print('etiqueta de la rama fuerte', etiquetas[('vo', vm)])
     for arista in aristas_vo_vk_camino[1:]:
         etiqueta = etiquetas[arista]
         if etiqueta[0] == '+':
             etiquetas[arista] = ('-', etiquetas[('vo', vm)][1]-etiqueta[1])
         else:
             etiquetas[arista] = ('+', etiquetas[('vo', vm)][1]-etiqueta[1])
-    for arista in aristas_vl_vo_camino[1:]:
+    for arista in aristas_vl_vo_camino:
         etiqueta = etiquetas[arista]
         if etiqueta[0] == '+':
-            etiquetas[arista] = ('-', etiquetas[('vo', vn)][1]+etiqueta[1])
+            etiquetas[arista] = ('+', etiquetas[('vo', vm)][1]+etiqueta[1])
         else:
-            etiquetas[arista] = ('+', etiquetas[('vo', vn)][1]+etiqueta[1])
+            etiquetas[arista] = ('-', etiquetas[('vo', vm)][1]+etiqueta[1])
+    print('etiquetas antes de normalizar', etiquetas)
     # crear lista de aristas del camino vm-vo
     aristas_vm_vo_camino = []
     for arista in aristas_vo_vk_camino[1:]:
@@ -358,11 +368,11 @@ while True:
             T_prima.remove(arista)
             T_prima.append(('vo', arista[1]))
             for edge in aristas_vm_vo_camino[inidice+1:]:
-                w = etiquetas[edge][1]-etiquetas[arista][1]
+                w_actualizado = etiquetas[edge][1]-etiquetas[arista][1]
                 if etiquetas[edge][0] == '+':
-                    etiquetas[edge] = ('+', w)
+                    etiquetas[edge] = ('+', w_actualizado)
                 else:
-                    etiquetas[edge] = ('-', w)
+                    etiquetas[edge] = ('-', w_actualizado)
     # asignar a T el arbol normalizado
     T = cp.copy(T_prima)
     # recalcular el conjunto de nodos fuertes
@@ -372,6 +382,7 @@ while True:
     print('Los arcos fuertes a agregar son:', arcos_fuertes)
     print('arbol después de haber normalizado', T)
     for arco in arcos_fuertes:
+        print('añadiendo rama fuerte soportada por',  arco[1])
         obtener_rama(arco[1], T, Y)
 
 print('los nodos a extraer son:', Y)
