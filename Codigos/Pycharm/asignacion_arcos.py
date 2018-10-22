@@ -283,12 +283,17 @@ def encontrar_camino(origen, destino, arcosArbol, visitados, antecesor):
 
 def obtener_rama(raiz, arcosArbol, nodos_fuertes):
     vecinos = []
-    vecinos_salen = [vecino for (u, vecino) in arcosArbol if raiz in (u, vecino) and vecino not in nodos_fuertes and not vecino == 'vo']
-    vecinos_entran = [vecino for (vecino, u) in arcosArbol if raiz in (u, vecino) and vecino not in nodos_fuertes and not vecino == 'vo']
-    vecinos.extend(vecinos_entran)
-    vecinos.extend(vecinos_salen)
-    print('los vecinos para ')
-    # siempre estoy recuperando la cabeza!!!, falta arreglar eso
+    # vecinos_salen = [vecino for (u, vecino) in arcosArbol if raiz in (u, vecino) and vecino not in nodos_fuertes and not vecino == 'vo']
+    # vecinos_entran = [vecino for (vecino, u) in arcosArbol if raiz in (u, vecino) and vecino not in nodos_fuertes and not vecino == 'vo']
+    # vecinos.extend(vecinos_entran)
+    # vecinos.extend(vecinos_salen)
+    for tail, head in arcosArbol:
+        if raiz in (tail, head):
+            if (not head == 'vo') and head not in nodos_fuertes:
+                vecinos.append(head)
+            elif (not tail == 'vo') and tail not in nodos_fuertes:
+                vecinos.append(tail)
+    # recorrer la lista dos veces esta demas!
     if vecinos:
         for vecino in vecinos:
             if vecino not in nodos_fuertes:
@@ -302,7 +307,7 @@ while True:
     # verificar optimalidad
     if test_opt(Y) is True:
         break
-    # si no se tiene, actualizar arbol
+    # si no se tiene, actualizar arbol: STEP 3
     (vk, vl) = test_opt(Y)
     # encontrar vo-vk camino y vo-vl camino en T
     vistos = []
@@ -314,6 +319,7 @@ while True:
     padre_fuerte = vo_vk_camino[hoja_fuerte]
     print('padre fuerte inicializacion', padre_fuerte)
     aristas_vo_vk_camino = [(padre_fuerte, hoja_fuerte)]
+    # el siguiente while recupera el camino usdando el diccionario vo_vk camino
     while not padre_fuerte == 'vo':
         hoja_fuerte = padre_fuerte
         padre_fuerte = vo_vk_camino[hoja_fuerte]
@@ -340,7 +346,7 @@ while True:
     T.remove(('vo', vm))
     T.extend([(vk, vl)])
     T_prima = T.copy()
-    # actualizar etiquetas: STEP 3
+    # actualizar etiquetas
     etiquetas[(vk, vl)] = ('-', etiquetas[('vo', vm)][1])
     print('etiqueta de la rama fuerte', etiquetas[('vo', vm)])
     for arista in aristas_vo_vk_camino[1:]:
@@ -362,6 +368,8 @@ while True:
         aristas_vm_vo_camino.append(arista)
     for arista in aristas_vl_vo_camino:
         aristas_vm_vo_camino.append(arista)
+
+    # normalizacion del arbol despues de actualizar etiquetas: STEP 4
     for inidice, arista in enumerate(aristas_vm_vo_camino):
         etiqueta = etiquetas[arista]
         if etiqueta[0] == '+' and etiqueta[1] > 0:  # preguntar si hay arco fuerte
