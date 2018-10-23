@@ -39,9 +39,14 @@ pos_z_MB = np.unique(ejez_MB.values)
 # primero una cantidad mas pequeña de bloques, i.e. de niveles
 # en el eje z
 #N = 10
-Nx = 4  # numero de ptos pos dimension
+# Ejemplo 1
+# Nx = 4  # numero de ptos pos dimension
+# Ny = 1
+# Nz = 2
+# Ejemplo 2
+Nx = 6  # numero de ptos pos dimension
 Ny = 1
-Nz = 2
+Nz = 3
 MB_sorted = MB.sort_values(by=['zcentre'], ascending=False)
 # MB_sorted = MB_sorted.loc[MB_sorted['zcentre'] < pos_z_MB[N]]
 # MB_sorted = MB_sorted.loc[MB_sorted['xcentre'] < pos_x_MB[N]]
@@ -238,13 +243,13 @@ for j in range(1, numy+1):
     for k in range(1, numz + 1):
         for i in range(1, numx + 1):
             S['vo'].append((i, j, k))
-pesos_paper = [-1, 1, 2, -1, 1, -1, -2, -1, 3, 4, -1, -2, -3, -2, 1, 2, -1, -2]
-pesos_ejemplo = [1, 1, -1, -1, -100, 2, -1, -100]
+pesos_ejemplo_2 = [-1, 1, 2, -1, 1, -1, -2, -1, 3, 4, -1, -2, -3, -2, 1, 2, -1, -2]
+pesos_ejemplo_1 = [1, 1, -1, -1, -100, 2, -1, -100]
 w = dict()
 for j in range(1, numy+1):
     for k in range(1, numz + 1):
         for i in range(1, numx + 1):
-            w[(i, j, k)] = pesos_ejemplo[i + (k-1)*numx-1]
+            w[(i, j, k)] = pesos_ejemplo_2[i + (k-1)*numx-1]
 
 etiquetas = dict()
 for (p, q, z) in S['vo']:
@@ -268,8 +273,13 @@ def test_opt(vertices):
 
 
 def encontrar_camino(origen, destino, arcosArbol, visitados, antecesor):
-    # print('destino esta dado por', destino)
-    neighbors_origen = [g for (r, g) in arcosArbol if origen in (r, g) and g not in visitados]  # solo agrega los vecinos que salen!!!
+    neighbors_origen = []
+    for tail, head in arcosArbol:
+        if origen in (tail, head):
+            if head not in visitados and not head == 'vo':
+                neighbors_origen.append(head)
+            elif tail not in visitados and not tail == 'vo':
+                neighbors_origen.append(tail)
     visitados.extend(neighbors_origen)
     # print('vecinos visitados en encontrar camino', visitados)
     for vertice in neighbors_origen:
@@ -283,17 +293,13 @@ def encontrar_camino(origen, destino, arcosArbol, visitados, antecesor):
 
 def obtener_rama(raiz, arcosArbol, nodos_fuertes):
     vecinos = []
-    # vecinos_salen = [vecino for (u, vecino) in arcosArbol if raiz in (u, vecino) and vecino not in nodos_fuertes and not vecino == 'vo']
-    # vecinos_entran = [vecino for (vecino, u) in arcosArbol if raiz in (u, vecino) and vecino not in nodos_fuertes and not vecino == 'vo']
-    # vecinos.extend(vecinos_entran)
-    # vecinos.extend(vecinos_salen)
     for tail, head in arcosArbol:
         if raiz in (tail, head):
             if (not head == 'vo') and head not in nodos_fuertes:
                 vecinos.append(head)
             elif (not tail == 'vo') and tail not in nodos_fuertes:
                 vecinos.append(tail)
-    # recorrer la lista dos veces esta demas!
+
     if vecinos:
         for vecino in vecinos:
             if vecino not in nodos_fuertes:
@@ -303,52 +309,41 @@ def obtener_rama(raiz, arcosArbol, nodos_fuertes):
 
 print('Arbol de la inicializacion', T)
 print('Yo de la iniciailizacion', Y)
+init_time = time.time()
 while True:
-    # verificar optimalidad
-    if test_opt(Y) is True:
+    if test_opt(Y) is True:  # verificar optimalidad
         break
-    # si no se tiene, actualizar arbol: STEP 3
-    (vk, vl) = test_opt(Y)
-    # encontrar vo-vk camino y vo-vl camino en T
+    (vk, vl) = test_opt(Y)  # si no se tiene, actualizar arbol: STEP 3
     vistos = []
     pi = {}
-    vo_vk_camino = encontrar_camino('vo', vk, T, vistos, pi)
-    # print('arbol despues de encontrar vo-vk camino', T)
+    vo_vk_camino = encontrar_camino('vo', vk, T, vistos, pi)  # retorna un diccionario para el camino
     hoja_fuerte = cp.copy(vk)
-    # encontrar nodo del camino conectado a la raiz
     padre_fuerte = vo_vk_camino[hoja_fuerte]
-    print('padre fuerte inicializacion', padre_fuerte)
     aristas_vo_vk_camino = [(padre_fuerte, hoja_fuerte)]
-    # el siguiente while recupera el camino usdando el diccionario vo_vk camino
-    while not padre_fuerte == 'vo':
+    while not padre_fuerte == 'vo':  # recuperar vo-vk camino almacenado en pi
         hoja_fuerte = padre_fuerte
         padre_fuerte = vo_vk_camino[hoja_fuerte]
         aristas_vo_vk_camino.extend([(padre_fuerte, hoja_fuerte)])
-    print('El vo-vk camino es:', aristas_vo_vk_camino)
     vm = cp.copy(hoja_fuerte)
     vistos = []
-    print('Arbol antes de retirar vm', T)
-    print('vm:', vm)
     pi = {}
     vo_vl_camino = encontrar_camino('vo', vl, T, vistos, pi)
     hoja_debil = cp.copy(vl)
     padre_debil = vo_vl_camino[hoja_debil]
     aristas_vl_vo_camino = [(padre_debil, hoja_debil)]
-    while not padre_debil == 'vo':
+    while not padre_debil == 'vo':  # recuperar vo-vl camino almacenado en pi
         hoja_debil = padre_fuerte
         padre_debil = vo_vl_camino[hoja_debil]
         aristas_vl_vo_camino.extend([(padre_debil, hoja_debil)])
     vn = cp.copy(hoja_debil)
     aristas_vo_vk_camino.reverse()  # reverse para que el nombre tenga sentido
-    print('El vl-vo camino es:', aristas_vl_vo_camino)
-    print('Arbol antes de retirar vm', T)
-    print('vn:', vn)
+    aristas_vm_vo_camino = []
+    aristas_vm_vo_camino.extend(aristas_vo_vk_camino[1:])
+    aristas_vm_vo_camino.extend(aristas_vl_vo_camino)
     T.remove(('vo', vm))
     T.extend([(vk, vl)])
     T_prima = T.copy()
-    # actualizar etiquetas
     etiquetas[(vk, vl)] = ('-', etiquetas[('vo', vm)][1])
-    print('etiqueta de la rama fuerte', etiquetas[('vo', vm)])
     for arista in aristas_vo_vk_camino[1:]:
         etiqueta = etiquetas[arista]
         if etiqueta[0] == '+':
@@ -361,45 +356,38 @@ while True:
             etiquetas[arista] = ('+', etiquetas[('vo', vm)][1]+etiqueta[1])
         else:
             etiquetas[arista] = ('-', etiquetas[('vo', vm)][1]+etiqueta[1])
-    print('etiquetas antes de normalizar', etiquetas)
-    # crear lista de aristas del camino vm-vo
-    aristas_vm_vo_camino = []
-    for arista in aristas_vo_vk_camino[1:]:
-        aristas_vm_vo_camino.append(arista)
-    for arista in aristas_vl_vo_camino:
-        aristas_vm_vo_camino.append(arista)
-
     # normalizacion del arbol despues de actualizar etiquetas: STEP 4
     for inidice, arista in enumerate(aristas_vm_vo_camino):
         etiqueta = etiquetas[arista]
         if etiqueta[0] == '+' and etiqueta[1] > 0:  # preguntar si hay arco fuerte
             T_prima.remove(arista)
             T_prima.append(('vo', arista[1]))
-            for edge in aristas_vm_vo_camino[inidice+1:]:
+            for edge in aristas_vm_vo_camino[inidice+1:]:  # actualizar etiquetas del camino
                 w_actualizado = etiquetas[edge][1]-etiquetas[arista][1]
                 if etiquetas[edge][0] == '+':
                     etiquetas[edge] = ('+', w_actualizado)
                 else:
                     etiquetas[edge] = ('-', w_actualizado)
-    # asignar a T el arbol normalizado
-    T = cp.copy(T_prima)
-    # recalcular el conjunto de nodos fuertes
+    T = cp.copy(T_prima)  # asignar a T el arbol normalizado
+    Y = list()  # actualizar Y
     arcos_fuertes = [arco for arco in T if arco[0] == 'vo' and etiquetas[arco][0] == '+' and etiquetas[arco][1] > 0]
-    print('etiquetas despues de normalizar son:', etiquetas)
-    Y = list()
-    print('Los arcos fuertes a agregar son:', arcos_fuertes)
-    print('arbol después de haber normalizado', T)
     for arco in arcos_fuertes:
-        print('añadiendo rama fuerte soportada por',  arco[1])
         obtener_rama(arco[1], T, Y)
-
 print('los nodos a extraer son:', Y)
+print('LG tomo:', time.time()-init_time)
+
+print('\n############################################\n')
+print('   Ejecutando Algoritmo de Ford-Fulkerson  ')
+print('\n############################################\n')
+
+
+
 #############################################
 # Graficar resultados
 #############################################
 
-bloque_base_1 = (2, 1, 2)  # bloque base para plotear
-bloque_base_2 = (3, 1, 2)
+bloque_base_1 = (4, 1, 3)  # bloque base para plotear
+bloque_base_2 = (5, 1, 2)
 
 MB_grafico = MB_sorted[['xcentre', 'ycentre', 'zcentre']]-(min(MB_sorted[['xcentre']].values),
                                                            min(MB_sorted[['ycentre']].values),
