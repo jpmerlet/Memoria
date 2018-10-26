@@ -281,14 +281,86 @@ def encontrar_camino(origen, destino, arcosArbol, visitados, antecesor):
             elif tail not in visitados and not tail == 'vo':
                 neighbors_origen.append(tail)
     visitados.extend(neighbors_origen)
-    # print('vecinos visitados en encontrar camino', visitados)
-    for vertice in neighbors_origen:
+    for vertice in neighbors_origen: # recuperar vo-vk camino almacenado en pi
         antecesor[vertice] = origen
     if destino in visitados:
-        return antecesor
+        hoja_fuerte = cp.copy(destino)
+        padre_fuerte = antecesor[hoja_fuerte]
+        aristas_camino = [(padre_fuerte, hoja_fuerte)]
+        while not padre_fuerte == 'vo':
+            hoja_fuerte = padre_fuerte
+            padre_fuerte = antecesor[hoja_fuerte]
+            aristas_camino.append((padre_fuerte, hoja_fuerte))
+        return aristas_camino
     else:
         vecino = visitados.pop()
         encontrar_camino(vecino, destino, arcosArbol, visitados, antecesor)
+
+
+def encontrar_camino_alt(origen, destino, arcosArbol):
+    antecesor = {}
+    visitados = [origen]
+    cola = [origen]
+    while cola:
+        neighbors_nodo = []
+        nodo = cola.pop()
+        for tail, head in arcosArbol:
+            if nodo in (tail, head):
+                if not head == nodo:
+                    neighbors_nodo.append(head)
+                else:
+                    neighbors_nodo.append(tail)
+        cola.extend([vecino for vecino in neighbors_nodo if w not in visitados])
+        for vecino in [vecino for vecino in neighbors_nodo if vecino not in visitados]:
+            antecesor[vecino] = nodo
+            visitados.append(vecino)
+        if destino in visitados:
+            break
+    hoja_fuerte = cp.copy(destino)
+    padre_fuerte = antecesor[hoja_fuerte]
+    aristas_camino = [(padre_fuerte, hoja_fuerte)]
+    while not padre_fuerte == 'vo':
+        hoja_fuerte = padre_fuerte
+        padre_fuerte = antecesor[hoja_fuerte]
+        aristas_camino.append((padre_fuerte, hoja_fuerte))
+    return aristas_camino
+
+
+def encontrar_camino_alt2(origen, destino, arcosArbol):  # ahora guarda la orientación de los arcos!!!
+    antecesor = {}
+    visitados = [origen]
+    cola = [origen]
+    while cola:
+        neighbors_nodo = []
+        nodo = cola.pop()
+        for tail, head in arcosArbol:
+            if nodo in (tail, head):
+                if not head == nodo:
+                    neighbors_nodo.append((head, 'head'))
+                else:
+                    label = 'tail'
+                    neighbors_nodo.append((tail, 'tail'))
+        cola.extend([w for w, label in neighbors_nodo if w not in visitados])
+        for vecino, label in neighbors_nodo:
+            if vecino not in visitados:
+                antecesor[vecino] = (nodo, label)
+                visitados.append(vecino)
+        if destino in visitados:
+            break
+    hoja = cp.copy(destino)
+    padre, label_hoja = antecesor[hoja]
+    if label_hoja == 'head':
+        aristas_camino = [(padre, hoja)]
+    else:
+        aristas_camino = [(hoja, padre)]
+    while not padre == 'vo':
+        hoja = padre
+        padre, label_hoja = antecesor[hoja]
+        if label_hoja == 'head':
+            aristas_camino.append((padre, hoja))
+        else:
+            aristas_camino.append((hoja, padre))
+    return aristas_camino
 
 
 def obtener_rama(raiz, arcosArbol, nodos_fuertes):
@@ -299,7 +371,6 @@ def obtener_rama(raiz, arcosArbol, nodos_fuertes):
                 vecinos.append(head)
             elif (not tail == 'vo') and tail not in nodos_fuertes:
                 vecinos.append(tail)
-
     if vecinos:
         for vecino in vecinos:
             if vecino not in nodos_fuertes:
@@ -314,29 +385,30 @@ while True:
     if test_opt(Y) is True:  # verificar optimalidad
         break
     (vk, vl) = test_opt(Y)  # si no se tiene, actualizar arbol: STEP 3
-    vistos = []
-    pi = {}
-    vo_vk_camino = encontrar_camino('vo', vk, T, vistos, pi)  # retorna un diccionario para el camino
-    hoja_fuerte = cp.copy(vk)
-    padre_fuerte = vo_vk_camino[hoja_fuerte]
-    aristas_vo_vk_camino = [(padre_fuerte, hoja_fuerte)]
-    while not padre_fuerte == 'vo':  # recuperar vo-vk camino almacenado en pi
-        hoja_fuerte = padre_fuerte
-        padre_fuerte = vo_vk_camino[hoja_fuerte]
-        aristas_vo_vk_camino.extend([(padre_fuerte, hoja_fuerte)])
-    vm = cp.copy(hoja_fuerte)
-    vistos = []
-    pi = {}
-    vo_vl_camino = encontrar_camino('vo', vl, T, vistos, pi)
-    hoja_debil = cp.copy(vl)
-    padre_debil = vo_vl_camino[hoja_debil]
-    aristas_vl_vo_camino = [(padre_debil, hoja_debil)]
-    while not padre_debil == 'vo':  # recuperar vo-vl camino almacenado en pi
-        hoja_debil = padre_fuerte
-        padre_debil = vo_vl_camino[hoja_debil]
-        aristas_vl_vo_camino.extend([(padre_debil, hoja_debil)])
-    vn = cp.copy(hoja_debil)
+    # vo_vk_camino = encontrar_camino('vo', vk, T, vistos, pi)  # retorna un diccionario para el camino
+    # hoja_fuerte = cp.copy(vk)
+    # padre_fuerte = vo_vk_camino[hoja_fuerte]
+    # aristas_vo_vk_camino = [(padre_fuerte, hoja_fuerte)]
+    # while not padre_fuerte == 'vo':  # recuperar vo-vk camino almacenado en pi
+    #     hoja_fuerte = padre_fuerte
+    #     padre_fuerte = vo_vk_camino[hoja_fuerte]
+    #     aristas_vo_vk_camino.extend([(padre_fuerte, hoja_fuerte)])
+    #aristas_vo_vk_camino = encontrar_camino('vo', vk, T, vistos, pi)
+    aristas_vo_vk_camino = encontrar_camino_alt2('vo', vk, T)#  encontrar caminos a extremos de ñas aristas
+    vm = cp.copy(aristas_vo_vk_camino[0][1])
     aristas_vo_vk_camino.reverse()  # reverse para que el nombre tenga sentido
+    #aristas_vl_vo_camino = encontrar_camino('vo', vl, T, vistos, pi)
+    aristas_vl_vo_camino = encontrar_camino_alt2('vo', vl, T)
+    # vo_vl_camino = encontrar_camino('vo', vl, T, vistos, pi)
+    # hoja_debil = cp.copy(vl)
+    # padre_debil = vo_vl_camino[hoja_debil]
+    # aristas_vl_vo_camino = [(padre_debil, hoja_debil)]
+    # while not padre_debil == 'vo':  # recuperar vo-vl camino almacenado en pi
+    #     hoja_debil = padre_fuerte
+    #     padre_debil = vo_vl_camino[hoja_debil]
+    #     aristas_vl_vo_camino.extend([(padre_debil, hoja_debil)])
+    # vn = cp.copy(hoja_debil)
+    vn = cp.copy(aristas_vl_vo_camino[0][1])
     aristas_vm_vo_camino = []
     aristas_vm_vo_camino.extend(aristas_vo_vk_camino[1:])
     aristas_vm_vo_camino.extend(aristas_vl_vo_camino)
@@ -344,7 +416,7 @@ while True:
     T.extend([(vk, vl)])
     T_prima = T.copy()
     etiquetas[(vk, vl)] = ('-', etiquetas[('vo', vm)][1])
-    for arista in aristas_vo_vk_camino[1:]:
+    for arista in aristas_vo_vk_camino[1:]:  # actualizar etiquetas de ambos caminos
         etiqueta = etiquetas[arista]
         if etiqueta[0] == '+':
             etiquetas[arista] = ('-', etiquetas[('vo', vm)][1]-etiqueta[1])
@@ -359,7 +431,7 @@ while True:
     # normalizacion del arbol despues de actualizar etiquetas: STEP 4
     for inidice, arista in enumerate(aristas_vm_vo_camino):
         etiqueta = etiquetas[arista]
-        if etiqueta[0] == '+' and etiqueta[1] > 0:  # preguntar si hay arco fuerte
+        if etiqueta[0] == '+' and etiqueta[1] > 0 and 'vo' not in arista:  # preguntar si hay arco fuerte en el camino
             T_prima.remove(arista)
             T_prima.append(('vo', arista[1]))
             for edge in aristas_vm_vo_camino[inidice+1:]:  # actualizar etiquetas del camino
