@@ -105,15 +105,13 @@ while True:
     if test_opt(Y) is True:  # verificar optimalidad
         break
     (vk, vl) = test_opt(Y)  # si no se tiene, actualizar arbol: STEP 3
-    aristas_vo_vk_camino = encontrar_camino('vo', vk, T)  # encontrar caminos a extremos de ñas aristas
+    aristas_vo_vk_camino = encontrar_camino('vo', vk, T)  # encontrar caminos a extremos de las aristas
     vm = cp.copy(aristas_vo_vk_camino[0][1])
     aristas_vo_vk_camino.reverse()  # reverse para que el nombre tenga sentido
     aristas_vl_vo_camino = encontrar_camino('vo', vl, T)
-    vn = cp.copy(aristas_vl_vo_camino[0][1])
     aristas_vm_vo_camino = []
     aristas_vm_vo_camino.extend(aristas_vo_vk_camino[1:])
     aristas_vm_vo_camino.extend(aristas_vl_vo_camino)
-    print('Se remueve el arco del ciclo: ', ('vo', vm))
     T.remove(('vo', aristas_vo_vk_camino[0][1]))
     T.extend([(vk, vl)])
     T_prima = T.copy()

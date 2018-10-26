@@ -397,7 +397,6 @@ while True:
     aristas_vo_vk_camino = encontrar_camino_alt2('vo', vk, T)#  encontrar caminos a extremos de ñas aristas
     vm = cp.copy(aristas_vo_vk_camino[0][1])
     aristas_vo_vk_camino.reverse()  # reverse para que el nombre tenga sentido
-    #aristas_vl_vo_camino = encontrar_camino('vo', vl, T, vistos, pi)
     aristas_vl_vo_camino = encontrar_camino_alt2('vo', vl, T)
     # vo_vl_camino = encontrar_camino('vo', vl, T, vistos, pi)
     # hoja_debil = cp.copy(vl)
@@ -408,11 +407,10 @@ while True:
     #     padre_debil = vo_vl_camino[hoja_debil]
     #     aristas_vl_vo_camino.extend([(padre_debil, hoja_debil)])
     # vn = cp.copy(hoja_debil)
-    vn = cp.copy(aristas_vl_vo_camino[0][1])
     aristas_vm_vo_camino = []
     aristas_vm_vo_camino.extend(aristas_vo_vk_camino[1:])
     aristas_vm_vo_camino.extend(aristas_vl_vo_camino)
-    T.remove(('vo', vm))
+    T.remove(('vo', aristas_vo_vk_camino[0][1]))
     T.extend([(vk, vl)])
     T_prima = T.copy()
     etiquetas[(vk, vl)] = ('-', etiquetas[('vo', vm)][1])
