@@ -14,7 +14,6 @@ def encontrar_camino(origen, destino, arcosArbol):
     antecesor = {}
     visitados = [origen]
     cola = [origen]
-    print('Buscar camino en T:', arcosArbol)
     while cola:
         neighbors_nodo = []
         nodo = cola.pop()
