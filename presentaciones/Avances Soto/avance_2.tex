@@ -1,0 +1,462 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[activeacute,spanish,es-nodecimaldot]{babel}
+\usepackage[left=1.5cm,top=1.5cm,right=1.5cm, bottom=1.5cm,letterpaper, includeheadfoot]{geometry}
+\usepackage[parfill]{parskip}
+
+\usepackage{amssymb, amsmath, amsthm}
+\usepackage{graphicx}
+\usepackage{lmodern,url}
+\usepackage{paralist} %util para listas compactas
+
+% paquetes agregados por mi
+\usepackage[linesnumbered,lined,commentsnumbered, ruled]{algorithm2e}
+\usepackage{tikz}
+%\usetikzlibrary{positioning,chains,fit,shapes,calc}
+\usetikzlibrary{positioning, shapes, arrows,decorations.text}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{ mathdots }
+\usepackage{verbatim}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancypagestyle{plain}{%
+\fancyhf{}
+\lhead{\footnotesize\itshape\bfseries\rightmark}
+\rhead{\footnotesize\itshape\bfseries\leftmark}
+}
+
+
+% macros
+\newcommand{\Q}{\mathbb Q}
+\newcommand{\R}{\mathbb R}
+\newcommand{\N}{\mathbb N}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\C}{\mathbb C}
+
+% macros jp
+\newcommand{\cev}[1]{\reflectbox{\ensuremath{\vec{\reflectbox{\ensuremath{#1}}}}}}
+
+%Teoremas, Lemas, etc.
+\theoremstyle{plain}
+\newtheorem{teo}{Teorema}
+\newtheorem{lem}{Lema}
+\newtheorem{prop}{Proposición}
+\newtheorem{cor}{Corolario}
+
+\theoremstyle{definition}
+\newtheorem{defi}{Definición}
+% fin macros
+
+%%%%% NOMBRE ESCRIBAS Y FECHA
+\newcommand{\sca}{Escriba Uno}
+\newcommand{\scb}{Escriba Dos}
+\newcommand{\scc}{Escriba Tres}
+\newcommand{\catnum}{0} %numero de catedra
+\newcommand{\fecha}{5 de noviembre 2018 }
+
+%%%%%%%%%%%%%%%%%%
+
+%Macros para este documento
+\newcommand{\cin}{\operatorname{cint}}
+
+\begin{document}
+%Encabezado
+\fancyhead[L]{Facultad de Ciencias Físicas y Matemáticas}
+\fancyhead[R]{Universidad de Chile}
+\vspace*{-1.2 cm}
+%\begin{minipage}{0.6\textwidth}
+%\begin{flushleft}
+%\hspace*{-0.5cm}\textbf{MA4702. Programación Lineal Mixta. 2018.}\\
+%\hspace*{-0.5cm}\textbf{Profesor:} José Soto\\
+%\hspace*{-0.5cm}\textbf{Escriba(s):} \sca, \scb~y \scc.\\
+%\hspace*{-0.5cm}\textbf{Fecha:} \fecha.
+%\end{flushleft}
+%\end{minipage}
+\begin{flushleft}
+\includegraphics[scale=0.15]{fcfm}
+\end{flushleft}
+\bigskip
+%Fin encabezado
+
+%-----------------------------------------
+%--------Aquí comienza el documento-------
+%-----------------------------------------
+
+
+
+\begin{center}
+\LARGE\textbf{Avances 2}\\
+\fecha
+\end{center}
+\bigskip
+
+Consideremos el problema de agendamiento de trabajos en máquinas idénticas, donde cada trabajo tiene su curva de ganancia $f^j$ asociada. Recordemos que $P_1$ es el problema de agendamiento donde no se permiten interrupciones en la ejecución de los trabajos (es decir, una vez que se comienza un trabajo $j$ en un día, en los días siguientes se elije continuar dicho trabajo, o comenzar otro y desechar $j$ como un trabajo disponible para los siguientes días). Llamamos $P_2$ es el mismo problema, pero ahora permitiendo interrupciones en la ejecución de un trabajo en una máquina, pero sin poder realizar un trabajo en diferentes máquinas aún. Por último, $P_3$ es el trabajo donde se permite interrupción y realizar un mismo trabajo en diferentes máquinas. Para que el problema tenga sentido, se considerará que $n > m$\\~\\
+
+Para este último problema, consideremos que para cada trabajo $j$ se puede descomponer cada función de ganancia como:
+\begin{equation}
+\label{eq:desc}
+f^j(t) = g^j(1) + g^j(2) + \cdots + g^j(i),\ \forall i \in [T]
+\end{equation}
+donde supondremos que $g^j(i)\geq g^j(i+1)$. Notar que en lo anterior queda explicito el supuesto de que cada trabajo se puede trabajar durante $T$ días. Antes de escribir el glotón que resuelve $P_3$, llamemos $G\in \mathcal{M}_{[n] \times [T]}$ a la \textit{matriz de ganancia}, de modo que $G_{ji}$ = $g^j(i)$. A cada entrada de $G_{ji}$ le llamaremos \textit{subtrabajo}. Escribiremos el agendamiento resultante de glotón en una secuencia de multi-conjuntos $\{S_t\}_{t \in [T]}$, donde cada multi-conjunto tendrá los trabajos que se realizarán el día $i$-ésimo. Dicho esto, el siguiente pseudo-código explica lo que realiza glotón: 
+
+
+
+\begin{algorithm}
+
+\caption{Glotón para $P_3$}
+\label{alg:gloton}
+\SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up}
+\SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress}
+\SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+
+
+\Input{$G$, matriz de ganancia}
+\Output{$S_i$, para $i \in [T]$}
+
+\BlankLine
+
+
+$T_1$ $\leftarrow \{G_{j1}:j\in [n]\}$ \emph{inicializar $T_d$, multi-conjunto de trabajos disponibles}\;
+\For{$i\leftarrow 1$ \KwTo $T$}{
+%\emph{special treatment of the first element of line $i$}\;
+%\For{$j\leftarrow 2$ \KwTo $w$}{\label{forins}
+$S_{i}$ $\leftarrow$ los $m$ mejores subtrabajos de $T_t$\;
+$T_{i+1}$ $\leftarrow$ $T_t\setminus{S_i} \cup \{G_{j,k+1}: \text{para $k\in [T]$, $j \in [n]$, tal que $G_{jk}\in S_{i}$}\}$\;
+}
+\Return $S_i$, para $i \in [T]$
+%}
+%\If(\tcp*[f]{O(\Up,\This)==1}){\Up compatible with \This}{\label{ut}
+%\lIf{\Up $<$ \This}{\Union{\Up,\This}}
+%\tcp{\This is put under \Up to keep tree as flat as possible}\label{cmt}
+%\lElse{\Union{\This,\Up}}\tcp*[h]{\This linked to \Up}\label{lelse}
+%}
+%}
+%\lForEach{element $e$ of the line $i$}{\FindCompress{p}}
+%}
+%\caption{disjoint decomposition}\label{algo_disjdecomp}
+\end{algorithm}
+Para verificar que el resultado del algoritmo (\ref{alg:gloton}) es el optimo del problema $P_3$, se mostrará que el resultado es óptimo en el problema equivalente de flujo de costo mínimo en una red a especificar.\\~\\
+
+
+Antes de definir la red, recordemos que ésta consiste en una tupla $(\vec{D}, u, c)$, donde $\vec{D} = (V, \vec{E})$ es el digrafo donde se quiere buscar el flujo máximo; $u: \vec{E} \to \N$ una función que a cada arco asocia la \textit{capacidad} máxima de flujo que se le envía; y $c:\vec{E} \to \R_-^*$ es la función que a cada arco le asocia un \textit{costo}. Un flujo $f:\vec{E} \to \R_+$ es una función que a cada arco de $\vec{D}$ asocia un real no negativo a enviar por ese arco.
+Dado un flujo $f$ para una red $(\vec{D}, u, c)$, para determinar si dicho flujo es óptimo usaremos el concepto de \textit{red residual} $(\vec{D}^f, u^f,c^f)$. Dicho digrafo se construte como sigue: 
+\begin{enumerate}
+\item Definir $\vec{D}' = (V, \vec{E} \cup \cev{E})$, es decir, al digrafo $\vec{D}$ le agregamos los arcos en el sentido contrario.
+
+\item  Para las capacidades $u^f$ residuales: a cada arco $(i,j) \in \vec{E}$ le asociamos $u^f_{ij} = u_{ij}-f_{ij}$, y para $(j,i) \in \cev{E}$, $u^f_{ji} = f_{ij}$.  Para los costos tenemos que $c^f_{ij} = c_{ij}$ y $c^f_{ji} = -c_{ij}$. Sea $\vec{E}^f$ los arcos tales que su capacidad residual es positiva.
+
+\item Por último, el digrafo residual está dado por $\vec{D}^f = (V, \vec{E}^f)$, y entonces la \textit{red residual} será $(\vec{D}^f, u^f, c^f)$. 
+\end{enumerate}  
+
+
+\tikzset{%
+  every neuron/.style={
+    circle,
+    draw,
+    minimum size=.6cm
+  },
+  neuron missing/.style={
+    draw=none, 
+    scale=2,
+    text height=0.333cm,
+    execute at begin node=\color{black}$\vdots$
+  },
+  arc rdiag/.style={
+    draw=none, 
+    scale=2,
+    text height=0.333cm,
+    execute at begin node=\color{black}$\iddots$
+  },
+  arc fdiag/.style={
+    draw=none, 
+    scale=2,
+    text height=0.333cm,
+    execute at begin node=\color{black}$\ddots$
+  },
+  arc vert/.style={
+    draw=none, 
+    scale=2,
+    text height=0.333cm,
+    execute at begin node=\color{black}$\vdots$
+  },
+}
+
+
+\begin{figure}[H]
+\begin{center}
+\begin{tikzpicture}[x=1.5cm, y=1.5cm]%, >=stealth]
+
+% nodo sumidero t
+\foreach \m [count=\y] in {t}
+  \node [every neuron/.try, neuron \m/.try, label=center:$\m$] (t) at (-2,0-\y) {};
+
+% nodo fuente
+\foreach \m [count=\y] in {s}
+  \node [every neuron/.try, neuron \m/.try, label=center:$\m$] (s) at (4,0-\y) {};
+
+% nodos de la capa de dias
+\foreach \m/\l [count=\y] in {1,2,missing,3}
+  \node [every neuron/.try, neuron \m/.try] (input-\m) at (0,1.5-\y) {};
+  
+% nodos de la capa de trabajos
+\foreach \m [count=\y] in {1,2,missing,3}
+  \node [every neuron/.try, neuron \m/.try] (hidden-\m) at (2,2-\y*1.25) {};
+
+% labels nodos trabajos
+\foreach \l [count=\i] in {1,2,n}
+  \node [above, label= below:$j_\l$] at (hidden-\i.north) {};
+  
+% labels nodos días
+\foreach \l [count=\i] in {1,2,T}
+  \node [above, label= below:$\l$] at (input-\i.north) {};
+
+% arcos entre fuente y capa de trabajos
+\foreach \i in {1,2,3}
+    \draw [<-] (hidden-\i) to [bend left]  (s);
+
+% arcos entre fuente y capa de trabajos (arcos superiores)
+\def\myshift#1{\raisebox{1ex}}
+\foreach \i in {1,2,3}
+    %\draw [<-,postaction={decorate,decoration={text along path,text align=center,text={|\myshift| {$(0,g^\i(1))$}{}}}}] (hidden-\i) to [bend left]   (s);
+    \draw [<-] (hidden-\i) to [bend left]  (s);
+
+% arcos entre fuente y capa de trabajos (arcos inferiores)
+\foreach \i in {1,2,3}
+    \draw [<-] (hidden-\i) to [bend right]  (s);
+
+% arcos entre la capa de trabajos y días
+\foreach \i in {1,2,3}
+  \foreach \j in {1,2,3}
+    \draw [<-] (input-\i) -- (hidden-\j);
+
+% arcos entre la capa de días y sumidero
+\foreach \i in {1,2,3}
+    \draw [<-] (t) -- (input-\i);
+
+% dots para los arcos faltantes entre fuente y trabajo
+\node [arc rdiag/.try] (arc1) at (3, -0.1) {};
+\node [arc vert/.try] (arc2) at (3, -0.7) {};
+\node [arc fdiag/.try] (arc3) at (3, -2) {};
+\foreach \l [count=\x from 0] in {Days, Works}
+  \node [align=center, above] at (\x*2,1.5) {\l};
+
+\end{tikzpicture}
+
+\end{center}
+\caption{Digrafo $\vec{D}$ de la red para resolver el problema $P_3$.}
+\label{fig:digRed}
+\end{figure}
+
+En la Figura (\ref{fig:digRed}) se puede el digrafo de la red que se utilizará para desmotrar la optimalidad del algoritmo (\ref{alg:gloton}). Para especificar cuales son los costos y las capacidades asociados a cada arco, ver (\ref{fig:sourceWork}), (\ref{fig:workDays}), y (\ref{fig:daysSumidero}).\\~\\
+
+\tikzset{%
+  arc rdiag/.style={
+    draw=none, 
+    scale=1.5,
+    text height=0.333cm,
+    execute at begin node=\color{black}$\iddots$
+  },
+}
+
+\captionsetup{justification=centering,margin=2cm}
+\begin{figure}[H]
+\captionsetup{justification=centering,margin=2cm}
+\begin{center}
+\begin{tikzpicture}
+\begin{scope}[every node/.style={circle,draw}]
+    \node (trabajo) at (0,3) {$j_i$};
+    \node (source) at (2.5,1) {$s$};
+\end{scope}
+\def\myshift#1{\raisebox{1ex}}
+\begin{scope}[every label/.style={fill=white,circle}]
+	\draw [<-,postaction={decorate,decoration={text along path,text align=center,text={|\myshift| {$(-g^i(1),1)$}}}}] (trabajo) to [bend left]   (source);
+\def\myshift#1{\raisebox{-2.5ex}}
+	\draw [<-,postaction={decorate,decoration={text along path,text align=center,text={|\myshift| {$(-g^i(T),1)$}}}}] (trabajo) to [bend right]  (source);
+\end{scope}
+\node [arc rdiag/.try] (arc1) at (1.35, 2) {};
+\tikzset{every label/.style={fill=white,circle}}
+
+\end{tikzpicture}
+\end{center}
+\caption{Cada arco tiene una etiqueta $(-g^i(k),1)$, donde la primera coordenada es el costo y la segunda la capacidad de dicho arco.}
+\label{fig:sourceWork}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\begin{tikzpicture}[x=1.5cm, y=1.5cm, scale = .77]%,>=stealth]                                      
+
+% nodo trabajo
+\foreach \m [count=\y] in {trabajo}
+  \node [every neuron/.try, neuron \m/.try, label=center:$j_i$] (trabajo) at (2,0-\y) {};
+
+% nodos de la capa de dias
+\foreach \m/\l [count=\y] in {1,2,missing,3}
+  \node [every neuron/.try, neuron \m/.try] (input-\m) at (0,1.5-\y) {};
+  
+% labels nodos días
+\foreach \l [count=\i] in {1,2,T}
+  \node [above, label= below:$\l$] at (input-\i.north) {};
+\def\myshift#1{\raisebox{1ex}}
+% arcos entre la capa de trabajos y días
+\foreach \j in {1,2,3}
+	\draw [<-, postaction={decorate,decoration={text along path,text align=center,text={|\myshift| {$(0,1)$}}}}] (input-\j) -- (trabajo);
+
+\foreach \l [count=\x from 0] in {Days, Works}
+  \node [align=center, above] at (\x*2,1) {\l};
+
+\end{tikzpicture}
+\end{center}
+\caption{A diferencia de los arcos que van desde la fuente a la capa de trabajos, aquí todos los costos son iguales a cero.}
+\label{fig:workDays}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+\begin{tikzpicture}[x=1.5cm, y=1.5cm, scale = 0.9]%,>=stealth]                                      
+
+% nodo trabajo
+\foreach \m [count=\y] in {trabajo}
+  \node [every neuron/.try, neuron \m/.try, label=center:$t$] (trabajo) at (0,0-\y) {};
+
+% nodos de la capa de dias
+\foreach \m/\l [count=\y] in {1,2,missing,3}
+  \node [every neuron/.try, neuron \m/.try] (input-\m) at (2,1.5-\y) {};
+  
+% labels nodos días
+\foreach \l [count=\i] in {1,2,T}
+  \node [above, label= below:$\l$] at (input-\i.north) {};
+\def\myshift#1{\raisebox{1ex}}
+% arcos entre la capa de trabajos y días
+\foreach \j in {1,2,3}
+	\draw [<-, postaction={decorate,decoration={text along path,text align=center,text={|\myshift| {$(0,1)$}}}}] (trabajo) -- (input-\j);
+
+\foreach \l [count=\x from 0] in {, Days}
+  \node [align=center, above] at (\x*2,1) {\l};
+
+\end{tikzpicture}
+\end{center}
+\caption{Cada arco tiene una etiqueta $(-g^i(k),1)$, donde la primera coordenada es el costo y la segunda la capacidad de dicho arco.}
+\label{fig:daysSumidero}
+\end{figure}
+
+Sea $f^G$ el flujo dado por glotón, tal que $f^G(\vec{E}) \subset \{0,1\}$. Esto úlitmo viene del hecho de que el algoritmo (\ref{alg:gloton}) asigna $m$ subtrabajos a cada día. Luego una asignación se interpreta en terminos del flujo equivalente a que el flujo valga $1$ si el subtrabajo fue asignado, y cero en caso contrario. \\~\\
+
+El teorema (\ref{teo:certificado}) nos da un certificado para la optimalidad del flujo $f^G$:\\~\\
+\begin{teo}
+\label{teo:certificado}
+Sea $(\vec{D}, u, c)$ una red dada, y $f$ un flujo factible. $f$ es un flujo de costo mínimo si y sólo si la red residual $(\vec{D}^f, u^f, c^f)$ no contiene ciclos dirigidos de costo negativo. 
+\end{teo}
+
+Luego, veamos que $(\vec{D}^{f^G}, u^{f^G}, c^{f^G})$ no tiene ciclos de costo negativo. Para ello, primero notemos que, de haber ciclos de costo negativo, no hay arcos entre las capas Days y $t$ que pudan participar de dichos ciclos. Esto último pues, como para cada día el algoritmo (\ref{alg:gloton}) asigna $m$ subtrabajos, entonces la capacidad residual de los arcos $it$ con $i \in [T]$ es $u^{f^G}(i,t) = 1-f^G_{it} = 0$, luego ninguno de los arcos $it$ aparecen en la red residual. Al mismo tiempo, los únicos arcos que aparecen entre estas dos capas son los arcos reversos (ver Figura (\ref{fig:daysSumideroResid}))
+
+\begin{figure}[H]
+\begin{center}
+\begin{tikzpicture}[x=1.5cm, y=1.5cm, scale = 0.9]%,>=stealth]                                      
+
+% nodo trabajo
+\foreach \m [count=\y] in {trabajo}
+  \node [every neuron/.try, neuron \m/.try, label=center:$t$] (trabajo) at (0,0-\y) {};
+
+% nodos de la capa de dias
+\foreach \m/\l [count=\y] in {1,2,missing,3}
+  \node [every neuron/.try, neuron \m/.try] (input-\m) at (2,1.5-\y) {};
+  
+% labels nodos días
+\foreach \l [count=\i] in {1,2,T}
+  \node [above, label= below:$\l$] at (input-\i.north) {};
+\def\myshift#1{\raisebox{1ex}}
+% arcos entre la capa de trabajos y días
+\foreach \j in {1,2,3}
+	\draw [<-, postaction={decorate,decoration={text along path,text align=center, reverse path,text={|\myshift| {$(0,1)$}}}}] (input-\j) -- (trabajo);
+% nombres de las capas
+\foreach \l [count=\x from 0] in {, Days}
+  \node [align=center, above] at (\x*2,1) {\l};
+
+\end{tikzpicture}
+\end{center}
+\caption{Arcos entre el sumidero $t$ y la capa Days en el grafo residual.} 
+\label{fig:daysSumideroResid}
+\end{figure}
+Por otro lado, lo que pasa entre las capas Days y Works no es tan simple como lo anterior, pues sabemos que cada $i \in [T]$ debe recibir $m$ arcos con flujo $1$, pero dichos arcos dependerán de los trabajos disponibles para dicho día. Sin embargo, se es fácil notar que solo hay $3$ tipos de ciclos que podemos encontrar en el digrafo residual $\vec{D}^{f^G}$:
+
+\begin{enumerate}
+\item  Ciclos entre el nodo fuente $s$ y un trabajos dado $j_i$. Notar que esto último ocurre pues entre el nodo fuente y cualquier trabajo tenemos $T$ arcos. Sea $d_i \in [T]$ la cantidad de días que glotón asigno a $j_i$. Los ciclos son como en la Figura ().
+  \begin{figure}[H]
+\captionsetup{justification=centering,margin=2cm}
+\begin{center}
+\begin{tikzpicture}
+\begin{scope}[every node/.style={circle,draw}]
+    \node (trabajo) at (0,3) {$j_i$};
+    \node (source) at (2.5,1) {$s$};
+\end{scope}
+\def\myshift#1{\raisebox{1ex}}
+\begin{scope}[every label/.style={fill=white,circle}]
+	\draw [<-,postaction={decorate,decoration={text along path,text align=center,text={|\myshift| {$(-g^i(1),1)$}}}}] (trabajo) to [bend left]   (source);
+\def\myshift#1{\raisebox{-2.5ex}}
+	\draw [<-,postaction={decorate,decoration={text along path,text align=center,text={|\myshift| {$(-g^i(T),1)$}}}}] (trabajo) to [bend right]  (source);
+\end{scope}
+\node [arc rdiag/.try] (arc1) at (1.35, 2) {};
+\tikzset{every label/.style={fill=white,circle}}
+
+\end{tikzpicture}
+\end{center}
+\caption{Cada arco tiene una etiqueta $(-g^i(k),1)$, donde la primera coordenada es el costo y la segunda la capacidad de dicho arco.}
+\label{fig:sourceWorkResid}
+\end{figure} 
+\end{enumerate}
+
+\newpage
+\section{Maximización de trabajos en máquinas idénticas (MTMI), caso sin intercambio}
+
+Lo primero que se presentará es que el problema de $2$- partición se puede reducir a MTMP. Para fijar ideas, consideremos que cualquier instancia de MTMI se representará mediante la tupla $(\{g^i\}_{i=1}^n,\{x_i\}_{i=1}^n, T, m)$, donde $\{g^i\}_{i=1}^n$ corresponde a las curvas de ganancias marginales para cada trabajo $i \in [n]$; $\{x_i\}_{i=1}^n \subset \N$ son tales que $g^i(t) = 0$ para todo $t>x_i$; T el dead line, y finalmente $m$ al número de máquinas.\\~\\
+
+\subsection{Reducción de $2$-partición a MTMI.}
+\begin{defi}(2-partición)
+\label{def:2part}
+Sea $S \subset \N$ un conjunto de naturales, tales que $\sum_{x \in S} x = 2 K$, para $K \in \N$. Dados $S$ y $K$, el problema de decisión asociado a 2 partición consiste en saber si existe una partición de $S = S_1 \cup S_2$ tal que:
+$$
+\sum S_1 = \sum S_2 = K
+$$
+\end{defi}
+
+Para la reducción, sean entonces $S, K$ como en la definición (\ref{def:2part}), más precisamente sea $S = {x_1, \ldots, x_n}$. Para cada $i \in [n]$ consideremos:
+\begin{equation}
+\label{eq:red}
+g^i(t) = 1 \quad \forall t \in [x_i]
+\end{equation}
+Dadas las ganancias marginales anteriores para los trabajos $i \in [n]$, consideremos un dead line $T:= K$ y $m = 2$. Así, a partir de una instancia $(S, K)$ para el problema de $2$-partición se define una instancia $(\{g^i\}_{i=1}^n,\{x_i\}_{i=1}^n, T, m)$. Luego, veamos que:
+
+\begin{equation}
+\label{eq:red2part}
+(S, K)\ \text{admite $2$-partición} \Longleftrightarrow (\{g^i\}_{i=1}^n,\{x_i\}_{i=1}^n, K, 2)\  \text{admite óptimo de valor } 2K
+\end{equation}
+
+
+\subsection{Reducción de $3$-partición a MTMI.}
+\begin{defi}{(3-partición)}
+Sea $S\subset \N$ tal que $|S| = 3m$, para algún $m \in \N$. $3$-partición corresponde al problema de desición siguiente: Es posible particionar el conjunto $S$ en $m$ $3$-tuplas, de manear que cada tupla sume lo mismo?
+\end{defi}
+
+Dicho lo anterior, veamos que $3$-partición se reduce a MTMI. Consideremos un tipo particular de instancia (para el cual $3$-partición sigue siendo un problema fuertemente NP-completo): Para fijar ideas, digamos que $\sum S = m K$, para algún $K \in \N$. Supondremos entonces que nuestras instancias cumplen que:
+
+\begin{equation}
+\label{eq:inst}
+K/4 < x < K/2\  \text{para } x \in S
+\end{equation}
+
+
+
+Así, una instancia de $3$-partición la codificaremos como una tupla $(S, K, m)$. Análogo al caso anterior, definimos $3m$ trabajos $\{g^i\}_{i=1}^{3m}$ de igual manera que en (\ref{eq:red}). Consideremos dead line $T:=K$, y consideremos $m$ máquinas. Se tiene que:
+
+\begin{equation}
+\label{eq:red3part}
+(S, K, m) \text{ admite $3$-partición} \Longleftrightarrow (\{g^i\}_{i=1}^{3m}, \{x_i\}_{i=1}^{3m}, T, m)
+\text{ admite óptimo de valor $Km$}
+\end{equation}
+
+Para la equivalencia (\ref{eq:red3part}), es clave la condición  (\ref{eq:inst}), pues así se asegura que la única forma de que el óptimo para MTMI sea $Km$ es que cada máquina logre utilizar exactamente 3 trabajos (pues si alguna máquina queda con tiempo libre, entonces dicha asignación de trabajos no es óptima). La condición (\ref{eq:inst}) implica que, de tener MTMI valor óptimo igual a $Km$, la única forma es que cada máquina este llena con tres trabajos cada una, puese si alguna tuviese dos entonces ahí su valor es menor que $K$, y ya no podrá tenerse la 3-partición. Pues, dadas las características de la instancia MTMI (\ref{eq:red3part})
+
+Cada vez que se puede tener 3-particion, es claro (también para $2$-partición!) que se tendrá valor óptimo para MTMI igual a $Km$ (respectivamente $2K$).
+\end{document}
