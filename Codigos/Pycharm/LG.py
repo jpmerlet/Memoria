@@ -61,8 +61,8 @@ def obtener_rama(raiz, arcosArbol, nodos_fuertes):
             obtener_rama(vecino, arcosArbol, nodos_fuertes)
 
 
-upit_path = '../minelib_inputs/newman1.upit'
-prec_path = '../minelib_inputs/newman1.prec'
+upit_path = '../minelib_inputs/p4hd.upit'
+prec_path = '../minelib_inputs/p4hd.prec'
 
 lineas = []
 w = {}  # diccionario de peses

@@ -456,7 +456,9 @@ Así, una instancia de $3$-partición la codificaremos como una tupla $(S, K, m)
 \text{ admite óptimo de valor $Km$}
 \end{equation}
 
-Para la equivalencia (\ref{eq:red3part}), es clave la condición  (\ref{eq:inst}), pues así se asegura que la única forma de que el óptimo para MTMI sea $Km$ es que cada máquina logre utilizar exactamente 3 trabajos (pues si alguna máquina queda con tiempo libre, entonces dicha asignación de trabajos no es óptima). La condición (\ref{eq:inst}) implica que, de tener MTMI valor óptimo igual a $Km$, la única forma es que cada máquina este llena con tres trabajos cada una, puese si alguna tuviese dos entonces ahí su valor es menor que $K$, y ya no podrá tenerse la 3-partición. Pues, dadas las características de la instancia MTMI (\ref{eq:red3part})
+Para la equivalencia (\ref{eq:red3part}), es clave la condición  (\ref{eq:inst}), pues así se asegura que la única forma de que el óptimo para MTMI sea $Km$ es que cada máquina logre utilizar exactamente 3 trabajos (pues si alguna máquina queda con tiempo libre, entonces dicha asignación de trabajos no es óptima). La condición (\ref{eq:inst}) implica que, de tener MTMI valor óptimo igual a $Km$, la única forma es que cada máquina este llena con tres trabajos cada una, puese si alguna tuviese dos entonces ahí su valor es menor que $K$, y ya no podrá tenerse la 3-partición. Pues, dadas las características de la instancia MTMI (\ref{eq:red3part}), sabemos que la solución óptima debe poder ocupar todos los trabajos en su respectivos tiempos de completación (ya que la capacidad de procesamiento de cada máquina es $K$ unidades de tiempo, y $\sum_{x \in S} x = Km$)
 
 Cada vez que se puede tener 3-particion, es claro (también para $2$-partición!) que se tendrá valor óptimo para MTMI igual a $Km$ (respectivamente $2K$).
+
+\subsection{PTAS para el caso de ganancias marginales con pendiente constante}
 \end{document}
