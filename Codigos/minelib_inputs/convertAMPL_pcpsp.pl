@@ -10,14 +10,14 @@ printf "data;\n";
 printf STDERR  "Reading file $filename\n";
 open (FH, "<", "$filename") || die "Can't open $filename: $!";
 substr $filename, index($filename, '.pcpsp'), 6, '';
-my $output_filename = join "", $filename,'_input','.dat';
+my $output_filename = join "", $filename,'_pcpsp_input','.dat';
 open(my $fh, '>', "$output_filename");
 while(<FH>)
 {
 	chomp $_;
 	my @col = split(/:/,$_);
 	if ($col[0] eq 'NBLOCKS') { 
-		printf $fh "param NBLOCKS := $col[1];\n";
+#		printf $fh "param NBLOCKS := $col[1];\n";
 		$nb = $col[1];
 	}
 	if ($col[0] eq 'NPERIODS') {
@@ -82,7 +82,7 @@ while(<FH>)
 
 		if ($col[0] eq 'OBJECTIVE_FUNCTION')
 		{
-			print $fh "param OBJECTIVE_FUNCTION :";
+			print $fh "param OBJECTIVE_FUNCTION_PCPSP :";
 			for($d = 0 ; $d < $nd ; $d++)
 			{
 				printf $fh (" $d");

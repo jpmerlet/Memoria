@@ -8,7 +8,7 @@ $filename = $ARGV[0];
 printf STDERR  "Reading file $filename\n";
 open (FH, "<", "$filename") || die "Can't open $filename: $!";
 substr $filename, index($filename, '.upit'), 6, '';
-my $output_filename = join "", $filename,'_input','.dat';
+my $output_filename = join "", $filename,'_upit_input','.dat';
 open(my $fh, '>', "$output_filename");
 while(<FH>)
 {
@@ -20,7 +20,7 @@ while(<FH>)
 	}
 		if ($col[0] eq 'OBJECTIVE_FUNCTION')
 		{
-			print $fh "param: OBJECTIVE_FUNCTION :=";
+			print $fh "param: OBJECTIVE_FUNCTION_UPIT :=";
 			for($i = 0 ; $i < $nb ; $i++)
 			{
 				$_ = <FH>;
