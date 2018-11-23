@@ -1,0 +1,52 @@
+## Archivo (grupoxx-mcf-gencol.run). Entregado por Grupo (xx): (nombreintegrantes) ##
+## 
+## Dantzig Wolfe en Flujo Multiservicio ###
+
+option solver cplex; option solver_msg 0;
+
+#  Calculo del conjunto inicial de caminos factibles (artificiales) y sus costos
+let n_p := n_d;  
+for {k in K} { #el camino "k" es el camino directo.
+	let servicio[k]:= k;
+	let Path[k]:= {(s[k],t[k])};
+	let costocamino[k] := c[s[k],t[k]];
+}
+
+let iter:=0;
+print "## Archivo grupo05-mcftest2.txt. Entregado por grupo05: JP Donoso Emir Chacra ##\n" > "grupo05-mcftest2.txt";
+repeat {   
+	let iter := iter + 1;
+	# Resolver Restricted Master Problem
+	problem master; solve > "basura.txt"; 
+
+
+	printf "\nIteracion %d: Master %.3f\n\n", iter, CostoTotalCaminos >> "grupo05-mcftest2.txt";
+	# Calcular funcion de peso g y valores beta
+	let {(i,j) in A} g[i,j] := c[i,j] - CapacidadCaminos[i,j].dual;
+	let {k in K} beta[k]    := DemandaCaminos[k].dual;
+
+	let flag := 0;
+
+	# Resolver el pricing problem para cada servicio k
+	for {k in K} {
+		let origen  := s[k];
+		let destino := t[k];
+		problem pricing; solve > "basura.txt";
+
+		if sum {(i,j) in A: z[i,j]==1}g[i,j] < beta[k] then { 
+			# agregar camino guardado en variable "z" al restricted master problem
+			let n_p := n_p + 1;
+			let Path[n_p] := {(i,j) in A: z[i,j]==1};
+			let costocamino[n_p]   := LargoCamino;
+			let servicio[n_p]:= k;
+			let flag := 1;
+			printf "\t\t servicio = %d, CostoReducido = %7.3f \n", k, LargoCamino - beta[k]>> "grupo05-mcftest2.txt";
+		}
+		}
+	printf "----------------------------------------\n\n">> "grupo05-mcftest2.txt";
+} until flag = 0 ;
+
+problem master; solve > "basura.txt"; 
+
+printf "\n\n Valor Objetivo = %7.3f\n", CostoTotalCaminos>> "grupo05-mcftest2.txt";
+display y, Path >> "grupo05-mcftest2.txt";

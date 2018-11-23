@@ -1,0 +1,63 @@
+## Archivo grupo05-mcftest2.txt. Entregado por grupo05: JP Donoso Emir Chacra ##\n
+
+Iteracion 1: Master 1700.000
+
+		 servicio = 1, CostoReducido = -88.000 
+		 servicio = 2, CostoReducido = -87.000 
+		 servicio = 3, CostoReducido = -88.000 
+		 servicio = 4, CostoReducido = -84.000 
+----------------------------------------
+
+
+Iteracion 2: Master 400.000
+
+		 servicio = 1, CostoReducido = -78.000 
+		 servicio = 2, CostoReducido = -83.000 
+		 servicio = 4, CostoReducido = -82.000 
+----------------------------------------
+
+
+Iteracion 3: Master 250.000
+
+		 servicio = 1, CostoReducido =  -2.000 
+		 servicio = 4, CostoReducido =  -4.000 
+----------------------------------------
+
+
+Iteracion 4: Master 246.000
+
+----------------------------------------
+
+
+
+ Valor Objetivo = 246.000
+y [*] :=
+ 1  0
+ 2  0
+ 3  0
+ 4  0
+ 5  4
+ 6  4
+ 7  3
+ 8  4
+ 9  1
+10  0
+11  0
+12  0
+13  1
+;
+
+set Path[1] := (1,8);
+set Path[2] := (1,7);
+set Path[3] := (5,8);
+set Path[4] := (1,9);
+set Path[5] := (1,3) (3,6) (6,8);
+set Path[6] := (1,4) (4,7);
+set Path[7] := (5,6) (6,8);
+set Path[8] := (1,5) (5,9);
+set Path[9] := (1,2) (2,4) (4,6) (6,8);
+set Path[10] := (1,2) (2,4) (4,7);
+set Path[11] := (1,3) (3,5) (5,9);
+set Path[12] := (1,2) (2,3) (3,6) (6,8);
+set Path[13] := (1,2) (2,4) (4,5) (5,9);
+
