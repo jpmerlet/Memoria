@@ -1,0 +1,15 @@
+# pcpsp.run corre el modelo upit, y luego
+# el pcpsp en los bloques que quedaron
+reset;
+option solver cplex;
+model modelos.mod;
+# cargar datos
+data marvin_upit_input.dat;
+data marvin_pcpsp_input.dat;
+data marvin_prec.dat;
+# resolver upit
+solve UPIT;
+option cplex_options 'mipdisplay=2';
+# recuperar upit y resolver agendamiento ahí
+let setUPIT:= {b in setBL: x_upit[b]=1};
+solve PCPSP;
