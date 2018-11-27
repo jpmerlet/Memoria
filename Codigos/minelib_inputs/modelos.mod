@@ -23,22 +23,22 @@ var x_pcpsp{setBL,setT} binary;
 var Y{setBL,setDEST,setT} >=0, <=1;
 
 maximize profit_upit: sum{b in setBL} OBJECTIVE_FUNCTION_UPIT[b]*x_upit[b];
-maximize profit_pcpsp: sum{t in setT} sum {d in setDEST} sum{b in setUPIT} (1.0/(1.0 + DISCOUNT_RATE))^t * OBJECTIVE_FUNCTION_PCPSP[b,d] * Y[b,d,t];
+maximize profit_pcpsp: sum{t in setT} sum {d in setDEST} sum{b in setBL} (1.0/(1.0 + DISCOUNT_RATE))^t * OBJECTIVE_FUNCTION_PCPSP[b,d] * Y[b,d,t];
 
 # restricciones para upit
 subject to precedence {b in setBL, j in PREC[b]}: x_upit[b] <= x_upit[j];
 
 # restricciones para pcpsp
 subject to Resource { r in setSIDE, t in setT}:
-		RESOURCE_CONSTRAINT_LB_LIMITS[r,t] <= sum{b in setUPIT} sum {d in setDEST} RESOURCE_CONSTRAINT_COEFFICIENTS[b,r,d] * Y[b,d,t] <= RESOURCE_CONSTRAINT_UB_LIMITS[r,t];
+		RESOURCE_CONSTRAINT_LB_LIMITS[r,t] <= sum{b in setBL} sum {d in setDEST} RESOURCE_CONSTRAINT_COEFFICIENTS[b,r,d] * Y[b,d,t] <= RESOURCE_CONSTRAINT_UB_LIMITS[r,t];
 
-subject to CliqueBlock {b in setUPIT}:
+subject to CliqueBlock {b in setBL}:
 		sum{t in setT} x_pcpsp[b,t] <= 1;
 
-subject to SumDest {b in setUPIT, t in setT}:
+subject to SumDest {b in setBL, t in setT}:
 		sum {d in setDEST} Y[b,d,t] = x_pcpsp[b,t];
 
-subject to Precedence {b in setUPIT, i in PREC[b], t in setT}:
+subject to Precedence {b in setBL, i in PREC[b], t in setT}:
     sum{s in 0..t} x_pcpsp[b,s] <= sum{s in 0..t} x_pcpsp[i,s];
 problem UPIT: x_upit, precedence, profit_upit;
 problem PCPSP: x_pcpsp, Y, Resource, CliqueBlock, SumDest, Precedence, profit_pcpsp;

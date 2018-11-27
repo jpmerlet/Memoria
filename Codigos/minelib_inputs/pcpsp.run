@@ -4,9 +4,9 @@ reset;
 option solver cplex;
 model modelos.mod;
 # cargar datos
-data kd_upit_input.dat;
-data kd_pcpsp_input.dat;
-data kd_prec.dat;
+data newman1_upit_input.dat;
+data newman1_pcpsp_input.dat;
+data newman1_prec.dat;
 # resolver upit
 solve UPIT;
 option cplex_options 'mipdisplay=2';
