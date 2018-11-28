@@ -2,14 +2,16 @@
 # el pcpsp en los bloques que quedaron
 reset;
 option solver cplex;
+#option gurobi_options 'presolve 0';
 model modelos.mod;
 # cargar datos
-data newman1_upit_input.dat;
-data newman1_pcpsp_input.dat;
-data newman1_prec.dat;
+param name symbolic;
+let name:= "newman1";
+data (name&"_upit_input.dat");
+data (name & "_pcpsp_input.dat");
+data (name & "_prec.dat");
 # resolver upit
 solve UPIT;
-option cplex_options 'mipdisplay=2';
 # recuperar upit y resolver agendamiento ahí
 let setUPIT:= {b in setBL: x_upit[b]=1};
 solve PCPSP;
