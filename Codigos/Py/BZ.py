@@ -1,0 +1,316 @@
+import pandas as pd
+import numpy as np
+from gurobipy import *
+from itertools import combinations
+import time
+
+# leer datos de minelib
+# obtener funcion objetivo del .pcpsp, para comparar
+# el resultado del modelo gurobi con el modelo AMPL
+data_name = 'newman1'
+pcpsp_path = '../minelib_inputs/' + data_name + '.pcpsp'
+prec_path = '../minelib_inputs/' + data_name + '.prec'
+upit_path = '../minelib_inputs/'+ data_name + '.upit'
+objective_function_pcpsp = {}
+resource_constraint_ub_limits = {}
+resource_constraint_lb_limits = {}
+resource_constraint_coefficients = {}
+with open(pcpsp_path, 'r') as f:
+    for linea in f:
+        linea_lista = linea.split()
+        if linea_lista[0] == 'NAME:':
+            dato = linea_lista[1].strip('\n')
+            name = dato
+        elif linea_lista[0] == 'NBLOCKS:':
+            dato = linea_lista[1].strip('\n')
+            nblocks = int(dato)
+        elif linea_lista[0] == 'NPERIODS:':
+            dato = linea_lista[1].strip('\n')
+            nperiods = int(dato)
+        elif linea_lista[0] == 'NDESTINATIONS:':
+            dato = linea_lista[1].strip('\n')
+            ndestinations = int(dato)
+        elif linea_lista[0] == 'NRESOURCE_SIDE_CONSTRAINTS:':
+            dato = linea_lista[1].strip('\n')
+            nresource_side_constraints = int(dato)
+        elif linea_lista[0] == 'NGENERAL_SIDE_CONSTRAINTS:':
+            dato = linea_lista[1].strip('\n')
+            ngeneral_side_constraints = int(dato)
+        elif linea_lista[0] == 'DISCOUNT_RATE:':
+            dato = linea_lista[1].strip('\n')
+            discount_rate = float(dato)
+        elif linea_lista[0] == 'RESOURCE_CONSTRAINT_LIMITS:':
+            for r in range(nresource_side_constraints):
+                for t in range(nperiods):
+                    linea = f.readline()
+                    lista = linea.split()
+                    resource_constraint_ub_limits[r,t] = int(lista[-1])
+                    resource_constraint_lb_limits[r,t] = '-Infinity' # falta hacer para el caso general
+    
+        elif linea_lista[0] == 'OBJECTIVE_FUNCTION:':
+            for b in range(nblocks):
+                linea = f.readline()
+                lista= linea.split()
+                objective_function_pcpsp[b,0] = float(lista[1])
+                objective_function_pcpsp[b,1] = float(lista[2])
+        elif linea_lista[0] == 'RESOURCE_CONSTRAINT_COEFFICIENTS:':
+                for linea in f:
+                    if linea == 'EOF\n':
+                        break
+                    lista = linea.split()
+                    b = int(lista[0])
+                    d = int(lista[1])
+                    r = int(lista[2])
+                    resource_constraint_coefficients[b,r,d] = float(lista[3])
+
+# llenar con ceros las entradas de resource_constraint_coefficients
+# que no está definidas
+for b,r,d in itertools.product(range(nblocks), range(nresource_side_constraints),range(ndestinations)):
+    if not (b,r,d) in resource_constraint_coefficients:
+        resource_constraint_coefficients[b,r,d] = 0
+
+# block value list para upit
+bv_list = list() 
+with open(upit_path, 'r') as f:
+    for i in range(4):
+        f.readline()
+    for line in f:
+        if not line == 'EOF\n':
+            lista = line.split()
+            bv_list.append(float(lista[1]))
+
+print('Data base name: %s' % (name))
+print('NBLOCKS: %d' % nblocks)
+print('NPERIODS: %d' % nperiods)
+print('NDESTINATIONS: %d' % ndestinations)
+print('NRESOURCE_SIDE_CONSTRAINTS: %d' % nresource_side_constraints)
+print('NGENERAL_SIDE_CONSTRAINTS: %d' % ngeneral_side_constraints)
+print('DISCOUNT_RATE: %.2f\n' % discount_rate)
+
+# funcion de reformulacion
+# para PCP_at a PCP_by
+def at_by_key(b,d,t):
+    if d == 0 and t > 0:
+        return b,ndestinations-1,t-1
+    elif d > 0:
+        return b,d-1,t
+    elif d == 0 and t == 0:
+        print('at_by_key no esta difinida para los valores d = %d, t = %d' % (d,t))
+
+if __name__ == "__main__":
+	# resolver upit
+	m = Model()
+	# variable de desicion para el modelo
+	x = {}
+	for i in range(nblocks):
+	    x[i] = m.addVar(vtype=GRB.BINARY, name = "x%d" % i)
+	m.update()
+	# definir objetivo
+	m.setObjective(LinExpr([bv_list[i]for i in range(nblocks)], [x[i] for i in range(nblocks)]), GRB.MAXIMIZE)
+	# definir restricciones
+	with open(prec_path, 'r') as f:
+	    for linea in f:
+	        linea_lista = linea.split()
+	        nvecinos = int(linea_lista[1])
+	        u = int(linea_lista[0])
+	        for j in range(nvecinos):
+	            v = int(linea_lista[j+2])
+	            m.addConstr(x[u] <= x[v])
+	m.optimize()
+	# recuperar upit
+	blocks_id_upit = [i for i in range(nblocks) if x[i].x==1] # recuperar upit
+	print('UPIT BLOCKS: %d' % len(blocks_id_upit))
+	# BZ (notar que labda fue reescalado y los
+	# coeficientes de la función objetivo tambien)
+	blocks = blocks_id_upit
+	mu = {}
+	C = {}
+	mu[0] = {}
+	blockTimesDest = list(itertools.product(blocks,range(ndestinations)))
+	resourceTimesPeriod = list(itertools.product(list(range(nresource_side_constraints)),
+	                                             list(range(nperiods))))
+	blocks_prime = list(itertools.product(blocks, list(range(ndestinations)),list(range(nperiods))))
+	for r,t in resourceTimesPeriod:
+	    mu[0][r,t] = 0
+	C[1,0] = set(blocks_prime)
+	k = 1
+	l = 1
+	# calculamos la forma equivalente del problema
+	# PCP_at, llamada PCP_by.
+	# funcion objetivo
+	c = {}
+	for (b,d,t) in blocks_prime:
+	    c[b,d,t] = (1.0/(1.0 + discount_rate))**t * objective_function_pcpsp[b,d]
+
+	# recalculamos c para PCP_by, c_hat
+	c_hat = {}
+	for (b,d,t) in blocks_prime:
+	    if d > 0 or t >0:
+	        c_hat[b,d,t] = c[b,d,t]
+	        c_hat[at_by_key(b,d,t)] = -c[b,d,t]
+	    else:
+	        c_hat[b,d,t] = c[b,d,t]
+
+	# modelo L(PCP_by,mu[k-1])
+	maestro = Model()
+	# definir variable de PCP_by
+	x = {}
+	for (b,d,t) in blocks_prime:
+	    x[b,d,t] = maestro.addVar(lb=0, ub=1, vtype=GRB.CONTINUOUS, name = "x(%d,%d,%d)" % (b,d,t))
+	maestro.update()
+	# agregar restricciones de
+	# precedencias.
+	# precedencia temporal
+	for t in range(nperiods-1):
+	    for b in blocks:
+	        maestro.addConstr(x[b,ndestinations-1,t] <= x[b,0,t+1])
+
+	# precedencia en los destinos
+	for d in range(ndestinations-1):
+	    for t in range(nperiods):
+	        for b in blocks:
+	            maestro.addConstr(x[b,d,t] <= x[b,d+1,t])
+
+	# precedencia espacial
+	with open(prec_path, 'r') as f:
+	    for linea in f:
+	        linea_lista = linea.split()
+	        nvecinos = int(linea_lista[1])
+	        a = int(linea_lista[0])
+	        if a in blocks:
+	            for j in range(nvecinos):
+	                b = int(linea_lista[j+2])
+	                for t in range(nperiods):
+	                    maestro.addConstr(x[a,ndestinations-1,t] <= x[b,ndestinations-1,t])
+
+	# Funcion objetivo de L(PCP_by,mu[k-1])
+	# cx = LinExpr([c_hat[b,d,t] for b,d,t in blocks_prime],[x[b,d,t] for b,d,t in blocks_prime])
+	# otra forma de calcularlo, sin pasar
+	# por c_hat
+	cx_direct = quickcx_direct = quicksum([c[b,d,t]*(x[b,d,t]-x[b,d-1,t]) for b,d,t in blocks_prime if d>0 and t>0])\
+	            +quicksum([c[b,0,t]*(x[b,0,t]-x[b,ndestinations-1,t-1]) for (b,d,t) in blocks_prime if d==0 and t>0])\
+	            +quicksum([c[b,0,0]*x[b,0,0] for b in blocks])
+	q = resource_constraint_coefficients
+	d_rhs = resource_constraint_ub_limits
+	w = {}
+	z = {}
+	while True:
+	    # STEP 1: resolver L(PCPby,mu[k-1])
+	    suma = {}
+	    side_const = LinExpr()
+	    #for r in range(nresource_side_constraints):
+	    #    for t in range(1,nperiods):
+	    #        suma[r,t] = mu[k-1][r,t]*(quicksum([q[b,r,d]*(x[b,d,t]-x[at_by_key(b,d,t)]) for b,d in blockTimesDest])-d_rhs[r,t])
+	    #        side_const += suma[r,t]
+	    #    suma[r,0] = mu[k-1][r,0]*(quicksum([q[b,r,d]*(x[b,d,0]-x[at_by_key(b,d,0)]) for b,d in blockTimesDest if d>0])+quicksum([q[b,r,0]*x[b,0,0]for b in blocks])-d_rhs[r,0])
+	    #    side_const += suma[r,0]
+	    LHS = {}
+	    for r in range(nresource_side_constraints):
+	        for t in range(nperiods):
+	            sumando_1 = quicksum([q[b,r,d]*(x[b,d,t]-x[b,d-1,t]) for b,d in blockTimesDest if d>0])
+	            if t > 0:
+	                LHS[r,t] = sumando_1+quicksum([q[b,r,0]*(x[b,0,t]-x[b,ndestinations-1,t-1]) for b in blocks])
+	            else:
+	                LHS[r,0] = sumando_1+quicksum([q[b,r,0]*x[b,0,0] for b in blocks])
+	    #fn_objetivo = cx + expr
+	    #fn_objetivo = cx_direct + side_const
+	    fn_objetivo = cx_direct + quicksum([mu[k-1][r,t]*(LHS[r,t]-d_rhs[r,t]) for r,t in resourceTimesPeriod])
+	    maestro.setObjective(fn_objetivo, GRB.MAXIMIZE)
+	    maestro.Params.Presolve = 0
+	    maestro.optimize()
+	    w[k] = x
+	    if k >= 2:
+	        parar = 0
+	        for h in range(1,l+1):
+	            for (b1,d1,t1),(b2,d2,t2) in combinations(C[h,k-1],2):
+	                if not w[k][b1,d1,t1] == w[k][b2,d2,t2]:
+	                    parar = 1
+	        if parar == 0:
+	            print('Algoritmo termino: H^%d w[%d] = 0' % (k-1,k))
+	            break
+	    #STEP 3: encontrar particion de blocks_prime
+	    I = [(b,d,t) for (b,d,t) in blocks_prime if w[k][b,d,t].x == 1]
+	    O = [(b,d,t) for (b,d,t) in blocks_prime if w[k][b,d,t].x == 0]
+	    count = 1
+	    for h in range(1,l+1):
+	        d = 0 
+	        if C[h,k-1].intersection(I):
+	            C[count,k] = C[h,k-1].intersection(I)
+	            d = 1
+	        if C[h,k-1].intersection(O):
+	            if d == 0:
+	                C[count,k] = C[h,k-1].intersection(O)
+	                count += 1
+	            else:
+	                C[count+1,k] = C[h,k-1].intersection(O)
+	                count += 2
+	    l = count-1
+	    # STEP 4: resolver P2k
+	    model_p2k = Model()
+	    lmbda = {}
+	    var_scale = 1
+	    obj_scale = 1
+	    for i in range(1,l+1):
+	        lmbda[i] = model_p2k.addVar(lb=0, ub=var_scale, vtype=GRB.CONTINUOUS, name = "lambda%d" % i)
+
+	    model_p2k.update()
+	    c_lmbda = {}
+	    for j in range(1,l+1):
+	        c_lmbda[j] = quicksum([c_hat[b,d,t] for (b,d,t) in blocks_prime if (b,d,t) in C[j,k]])
+	    obj_p2k = quicksum([obj_scale*c_lmbda[j]*lmbda[j] for j in range(1,l+1)])
+	    model_p2k.setObjective(obj_p2k)
+
+	    # agregamos las restricciones
+	    # para P2k con el cambio de variable
+	    # agregar restricciones de
+	    # precedencias.
+	    for t in range(nperiods-1):
+	        for b in blocks:
+	            model_p2k.addConstr(quicksum([lmbda[j]*((b,ndestinations-1,t) in C[j,k]) for j in range(1,l+1)]) <= 
+	                                quicksum([lmbda[j]*((b,0,t+1) in C[j,k]) for j in range(1,l+1)]))
+	    for d in range(ndestinations-1):
+	        for t in range(nperiods):
+	            for b in blocks:
+	                model_p2k.addConstr(quicksum([lmbda[j]*((b,d,t) in C[j,k]) for j in range(1,l+1)]) <= 
+	                                     quicksum([lmbda[j]*((b,d+1,t) in C[j,k]) for j in range(1,l+1)]))
+
+	    with open(prec_path, 'r') as f:
+	        for linea in f:
+	            linea_lista = linea.split()
+	            nvecinos = int(linea_lista[1])
+	            a = int(linea_lista[0])
+	            if a in blocks:
+	                for j in range(nvecinos):
+	                    b = int(linea_lista[j+2])
+	                    for t in range(nperiods):
+	                        model_p2k.addConstr(quicksum([lmbda[j]*((a,ndestinations-1,t) in C[j,k]) for j in range(1,l+1)]) <= 
+	                                    quicksum([lmbda[j]*((b,ndestinations-1,t) in C[j,k]) for j in range(1,l+1)]))
+	    
+	    # agregar side constraints
+	    Dx_p2k = {}
+	    for r in range(nresource_side_constraints):
+	        for t in range(1,nperiods):
+	            Dx_p2k[r,t] = quicksum([q[b,r,d]*(quicksum([lmbda[j]*((b,d,t) in C[j,k]) for j in range(1,l+1)])-
+	                                              quicksum([lmbda[j]*(at_by_key(b,d,t) in C[j,k]) for j in range(1,l+1)])) for b,d in blockTimesDest]) - d_rhs[r,t]
+	        Dx_p2k[r,0] = quicksum([q[b,r,d]*(quicksum([lmbda[j]*((b,d,0) in C[j,k]) for j in range(1,l+1)])-
+	                                          quicksum([lmbda[j]*(at_by_key(b,d,0) in C[j,k]) for j in range(1,l+1)])) for b,d in blockTimesDest if d>0]) + quicksum([q[b,r,0]*quicksum([lmbda[j]*((b,0,0) in C[j,k]) for j in range(1,l+1)]) for b in blocks]) - d_rhs[r,0]
+
+	    # agregar side constraints Dx <= d
+	    side_const = {}
+	    for r in range(nresource_side_constraints):
+	        for t in range(nperiods):
+	            side_const[r,t] = model_p2k.addConstr(Dx_p2k[r,t] <= 0, name='side_const[%d,%d]' % (r,t))
+	            #side_const[r,t] = model_p2k.addConstr(LHS[r,t]-d_rhs[r,t] <= 0, name='side_const[%d,%d]' % (r,t))
+	    model_p2k.Params.Presolve = 0
+	    model_p2k.optimize()
+	    # definir z[k]
+	    mu[k] = {}
+	    for r in range(nresource_side_constraints):
+	        for t in range(nperiods):
+	            mu[k][r,t] = side_const[r,t].pi
+	    if mu[k] == mu[k-1]: # Cambiar por una tolerancia!!!
+	        # recuperar z[k] la solucion del optimo
+	        z[k] = quicksum([lmbda[j].x*((b,d,t) in C[j,k]) for j in range(1,l+1)])
+	        print('Algoritmo termino: mu[%d] = mu[%d]' % (k,k-1))
+	        break
+	    k += 1
