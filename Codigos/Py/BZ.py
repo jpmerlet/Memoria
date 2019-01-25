@@ -3,6 +3,7 @@ import numpy as np
 from gurobipy import *
 from itertools import combinations
 import time
+from math import isclose
 
 # leer datos de minelib
 # obtener funcion objetivo del .pcpsp, para comparar
@@ -44,15 +45,20 @@ with open(pcpsp_path, 'r') as f:
                 for t in range(nperiods):
                     linea = f.readline()
                     lista = linea.split()
-                    resource_constraint_ub_limits[r,t] = int(lista[-1])
-                    resource_constraint_lb_limits[r,t] = '-Infinity' # falta hacer para el caso general
+                    if lista[2] == 'L':
+                        resource_constraint_ub_limits[r,t] = int(lista[-1])
+                        resource_constraint_lb_limits[r,t] = '-Infinity' # falta hacer para el caso general
+                    else:
+                        print('Este problema tiene cotas inferiores.')
+                        break
     
         elif linea_lista[0] == 'OBJECTIVE_FUNCTION:':
             for b in range(nblocks):
                 linea = f.readline()
                 lista= linea.split()
-                objective_function_pcpsp[b,0] = float(lista[1])
-                objective_function_pcpsp[b,1] = float(lista[2])
+                for d in range(ndestinations):
+                    objective_function_pcpsp[b,d] = float(lista[d+1])
+
         elif linea_lista[0] == 'RESOURCE_CONSTRAINT_COEFFICIENTS:':
                 for linea in f:
                     if linea == 'EOF\n':
@@ -86,7 +92,8 @@ print('NDESTINATIONS: %d' % ndestinations)
 print('NRESOURCE_SIDE_CONSTRAINTS: %d' % nresource_side_constraints)
 print('NGENERAL_SIDE_CONSTRAINTS: %d' % ngeneral_side_constraints)
 print('DISCOUNT_RATE: %.2f\n' % discount_rate)
-
+resourceTimesPeriod = list(itertools.product(list(range(nresource_side_constraints)),
+                                             list(range(nperiods))))
 # funcion de reformulacion
 # para PCP_at a PCP_by
 def at_by_key(b,d,t):
@@ -97,16 +104,23 @@ def at_by_key(b,d,t):
     elif d == 0 and t == 0:
         print('at_by_key no esta difinida para los valores d = %d, t = %d' % (d,t))
 
+def check_optimality(sol,particion,ell,iteracion):
+    for h in range(1,ell+1):
+        for (b1,d1,t1),(b2,d2,t2) in combinations(particion[h,iteracion-1],2):
+            if not sol[iteracion][b1,d1,t1] == sol[iteracion][b2,d2,t2]:
+                return False
+    return True
+
 if __name__ == "__main__":
 	# resolver upit
-	m = Model()
+	upit = Model()
 	# variable de desicion para el modelo
 	x = {}
 	for i in range(nblocks):
-	    x[i] = m.addVar(vtype=GRB.BINARY, name = "x%d" % i)
-	m.update()
+	    x[i] = upit.addVar(vtype=GRB.BINARY, name = "x%d" % i)
+	upit.update()
 	# definir objetivo
-	m.setObjective(LinExpr([bv_list[i]for i in range(nblocks)], [x[i] for i in range(nblocks)]), GRB.MAXIMIZE)
+	upit.setObjective(LinExpr([bv_list[i]for i in range(nblocks)], [x[i] for i in range(nblocks)]), GRB.MAXIMIZE)
 	# definir restricciones
 	with open(prec_path, 'r') as f:
 	    for linea in f:
@@ -115,21 +129,19 @@ if __name__ == "__main__":
 	        u = int(linea_lista[0])
 	        for j in range(nvecinos):
 	            v = int(linea_lista[j+2])
-	            m.addConstr(x[u] <= x[v])
-	m.optimize()
+	            upit.addConstr(x[u] <= x[v])
+	upit.optimize()
 	# recuperar upit
 	blocks_id_upit = [i for i in range(nblocks) if x[i].x==1] # recuperar upit
 	print('UPIT BLOCKS: %d' % len(blocks_id_upit))
-	# BZ (notar que labda fue reescalado y los
-	# coeficientes de la función objetivo tambien)
-	blocks = blocks_id_upit
+	###################################################################################
+	# inicializar variables para BZ
+	blocks = blocks_id_upit # se parte de los bloques ya encontrados por upit
+	blocks_prime = list(itertools.product(blocks, list(range(ndestinations)),list(range(nperiods))))
+	blockTimesDest = list(itertools.product(blocks,range(ndestinations)))
 	mu = {}
 	C = {}
 	mu[0] = {}
-	blockTimesDest = list(itertools.product(blocks,range(ndestinations)))
-	resourceTimesPeriod = list(itertools.product(list(range(nresource_side_constraints)),
-	                                             list(range(nperiods))))
-	blocks_prime = list(itertools.product(blocks, list(range(ndestinations)),list(range(nperiods))))
 	for r,t in resourceTimesPeriod:
 	    mu[0][r,t] = 0
 	C[1,0] = set(blocks_prime)
@@ -152,24 +164,23 @@ if __name__ == "__main__":
 	        c_hat[b,d,t] = c[b,d,t]
 
 	# modelo L(PCP_by,mu[k-1])
-	maestro = Model()
+	problema_aux = Model()
 	# definir variable de PCP_by
 	x = {}
 	for (b,d,t) in blocks_prime:
-	    x[b,d,t] = maestro.addVar(lb=0, ub=1, vtype=GRB.CONTINUOUS, name = "x(%d,%d,%d)" % (b,d,t))
-	maestro.update()
-	# agregar restricciones de
-	# precedencias.
+	    x[b,d,t] = problema_aux.addVar(lb=0, ub=1, vtype=GRB.CONTINUOUS, name = "x(%d,%d,%d)" % (b,d,t))
+	problema_aux.update()
+	# agregar restricciones de precedencias
 	# precedencia temporal
 	for t in range(nperiods-1):
 	    for b in blocks:
-	        maestro.addConstr(x[b,ndestinations-1,t] <= x[b,0,t+1])
+	        problema_aux.addConstr(x[b,ndestinations-1,t] <= x[b,0,t+1])
 
 	# precedencia en los destinos
 	for d in range(ndestinations-1):
 	    for t in range(nperiods):
 	        for b in blocks:
-	            maestro.addConstr(x[b,d,t] <= x[b,d+1,t])
+	            problema_aux.addConstr(x[b,d,t] <= x[b,d+1,t])
 
 	# precedencia espacial
 	with open(prec_path, 'r') as f:
@@ -181,13 +192,10 @@ if __name__ == "__main__":
 	            for j in range(nvecinos):
 	                b = int(linea_lista[j+2])
 	                for t in range(nperiods):
-	                    maestro.addConstr(x[a,ndestinations-1,t] <= x[b,ndestinations-1,t])
+	                    problema_aux.addConstr(x[a,ndestinations-1,t] <= x[b,ndestinations-1,t])
 
 	# Funcion objetivo de L(PCP_by,mu[k-1])
-	# cx = LinExpr([c_hat[b,d,t] for b,d,t in blocks_prime],[x[b,d,t] for b,d,t in blocks_prime])
-	# otra forma de calcularlo, sin pasar
-	# por c_hat
-	cx_direct = quickcx_direct = quicksum([c[b,d,t]*(x[b,d,t]-x[b,d-1,t]) for b,d,t in blocks_prime if d>0 and t>0])\
+	cx_direct = quicksum([c[b,d,t]*(x[b,d,t]-x[b,d-1,t]) for b,d,t in blocks_prime if d>0 and t>0])\
 	            +quicksum([c[b,0,t]*(x[b,0,t]-x[b,ndestinations-1,t-1]) for (b,d,t) in blocks_prime if d==0 and t>0])\
 	            +quicksum([c[b,0,0]*x[b,0,0] for b in blocks])
 	q = resource_constraint_coefficients
@@ -195,15 +203,9 @@ if __name__ == "__main__":
 	w = {}
 	z = {}
 	while True:
-	    # STEP 1: resolver L(PCPby,mu[k-1])
+	    # STEP 2: resolver L(PCPby,mu[k-1])
 	    suma = {}
 	    side_const = LinExpr()
-	    #for r in range(nresource_side_constraints):
-	    #    for t in range(1,nperiods):
-	    #        suma[r,t] = mu[k-1][r,t]*(quicksum([q[b,r,d]*(x[b,d,t]-x[at_by_key(b,d,t)]) for b,d in blockTimesDest])-d_rhs[r,t])
-	    #        side_const += suma[r,t]
-	    #    suma[r,0] = mu[k-1][r,0]*(quicksum([q[b,r,d]*(x[b,d,0]-x[at_by_key(b,d,0)]) for b,d in blockTimesDest if d>0])+quicksum([q[b,r,0]*x[b,0,0]for b in blocks])-d_rhs[r,0])
-	    #    side_const += suma[r,0]
 	    LHS = {}
 	    for r in range(nresource_side_constraints):
 	        for t in range(nperiods):
@@ -212,22 +214,19 @@ if __name__ == "__main__":
 	                LHS[r,t] = sumando_1+quicksum([q[b,r,0]*(x[b,0,t]-x[b,ndestinations-1,t-1]) for b in blocks])
 	            else:
 	                LHS[r,0] = sumando_1+quicksum([q[b,r,0]*x[b,0,0] for b in blocks])
-	    #fn_objetivo = cx + expr
-	    #fn_objetivo = cx_direct + side_const
-	    fn_objetivo = cx_direct + quicksum([mu[k-1][r,t]*(LHS[r,t]-d_rhs[r,t]) for r,t in resourceTimesPeriod])
-	    maestro.setObjective(fn_objetivo, GRB.MAXIMIZE)
-	    maestro.Params.Presolve = 0
-	    maestro.optimize()
+
+	    fn_objetivo = cx_direct - quicksum([mu[k-1][r,t]*(LHS[r,t]-d_rhs[r,t]) for r,t in resourceTimesPeriod])
+	    problema_aux.setObjective(fn_objetivo, GRB.MAXIMIZE)
+	    # problema_aux.Params.Presolve = 0
+	    print('\nResolviendo problema auxiliar: k = %d' % k)
+	    problema_aux.optimize()
 	    w[k] = x
-	    if k >= 2:
-	        parar = 0
-	        for h in range(1,l+1):
-	            for (b1,d1,t1),(b2,d2,t2) in combinations(C[h,k-1],2):
-	                if not w[k][b1,d1,t1] == w[k][b2,d2,t2]:
-	                    parar = 1
-	        if parar == 0:
-	            print('Algoritmo termino: H^%d w[%d] = 0' % (k-1,k))
-	            break
+	    # verificar optimalidad de z[k-1]
+	    if k>=2 and check_optimality(w,C,l,k):
+	        print('Algoritmo termino: H^%d w[%d] = 0' % (k-1,k))
+	        print('Valor optimo de BZ: %.2f' % (model_p2k.ObjVal*(1/obj_scale)))
+	        break
+	    
 	    #STEP 3: encontrar particion de blocks_prime
 	    I = [(b,d,t) for (b,d,t) in blocks_prime if w[k][b,d,t].x == 1]
 	    O = [(b,d,t) for (b,d,t) in blocks_prime if w[k][b,d,t].x == 0]
@@ -244,22 +243,22 @@ if __name__ == "__main__":
 	            else:
 	                C[count+1,k] = C[h,k-1].intersection(O)
 	                count += 2
+
 	    l = count-1
 	    # STEP 4: resolver P2k
 	    model_p2k = Model()
 	    lmbda = {}
-	    var_scale = 1
-	    obj_scale = 1
 	    for i in range(1,l+1):
-	        lmbda[i] = model_p2k.addVar(lb=0, ub=var_scale, vtype=GRB.CONTINUOUS, name = "lambda%d" % i)
+	        lmbda[i] = model_p2k.addVar(lb=0, ub=1, vtype=GRB.CONTINUOUS, name = "lambda%d" % i)
 
 	    model_p2k.update()
 	    c_lmbda = {}
 	    for j in range(1,l+1):
 	        c_lmbda[j] = quicksum([c_hat[b,d,t] for (b,d,t) in blocks_prime if (b,d,t) in C[j,k]])
-	    obj_p2k = quicksum([obj_scale*c_lmbda[j]*lmbda[j] for j in range(1,l+1)])
-	    model_p2k.setObjective(obj_p2k)
 
+	    obj_p2k = quicksum([c_lmbda[j]*lmbda[j] for j in range(1,l+1)])
+	    obj_scale = 1e-2
+	    model_p2k.setObjective(obj_scale*obj_p2k, GRB.MAXIMIZE)
 	    # agregamos las restricciones
 	    # para P2k con el cambio de variable
 	    # agregar restricciones de
@@ -286,31 +285,42 @@ if __name__ == "__main__":
 	                        model_p2k.addConstr(quicksum([lmbda[j]*((a,ndestinations-1,t) in C[j,k]) for j in range(1,l+1)]) <= 
 	                                    quicksum([lmbda[j]*((b,ndestinations-1,t) in C[j,k]) for j in range(1,l+1)]))
 	    
-	    # agregar side constraints
-	    Dx_p2k = {}
+	    # construir lado izquierdo de las side constraints
+	    LHS_lmbda = {}
 	    for r in range(nresource_side_constraints):
-	        for t in range(1,nperiods):
-	            Dx_p2k[r,t] = quicksum([q[b,r,d]*(quicksum([lmbda[j]*((b,d,t) in C[j,k]) for j in range(1,l+1)])-
-	                                              quicksum([lmbda[j]*(at_by_key(b,d,t) in C[j,k]) for j in range(1,l+1)])) for b,d in blockTimesDest]) - d_rhs[r,t]
-	        Dx_p2k[r,0] = quicksum([q[b,r,d]*(quicksum([lmbda[j]*((b,d,0) in C[j,k]) for j in range(1,l+1)])-
-	                                          quicksum([lmbda[j]*(at_by_key(b,d,0) in C[j,k]) for j in range(1,l+1)])) for b,d in blockTimesDest if d>0]) + quicksum([q[b,r,0]*quicksum([lmbda[j]*((b,0,0) in C[j,k]) for j in range(1,l+1)]) for b in blocks]) - d_rhs[r,0]
+	        for t in range(nperiods):
+	            LHS_lmbda[r,t] = quicksum([q[b,r,d]*(quicksum([lmbda[j]*((b,d,t) in C[j,k]) for j in range(1,l+1)])-quicksum([lmbda[j]*((b,d-1,t) in C[j,k]) for j in range(1,l+1)])) for (b,d) in blockTimesDest])
+	            if t>0:
+	                LHS_lmbda[r,t] = LHS_lmbda[r,t] + quicksum([q[b,r,0]*(quicksum([lmbda[j]*((b,0,t) in C[j,k]) for j in range(1,l+1)])-quicksum([lmbda[j]*((b,ndestinations-1,t-1) in C[j,k]) for j in range(1,l+1)])) for b in blocks])
+	            else:
+	                LHS_lmbda[r,0] = LHS_lmbda[r,0] + quicksum([q[b,r,0]*(quicksum([lmbda[j]*((b,0,0) in C[j,k]) for j in range(1,l+1)])) for b in blocks])
 
 	    # agregar side constraints Dx <= d
 	    side_const = {}
+	    sc_scale = 1e-2 # ponderador para D (Dx <=d)
 	    for r in range(nresource_side_constraints):
 	        for t in range(nperiods):
-	            side_const[r,t] = model_p2k.addConstr(Dx_p2k[r,t] <= 0, name='side_const[%d,%d]' % (r,t))
-	            #side_const[r,t] = model_p2k.addConstr(LHS[r,t]-d_rhs[r,t] <= 0, name='side_const[%d,%d]' % (r,t))
-	    model_p2k.Params.Presolve = 0
+	            side_const[r,t] = model_p2k.addConstr(sc_scale*LHS_lmbda[r,t] <= sc_scale*d_rhs[r,t], name='side_const[%d,%d]' % (r,t))
+
+	   # model_p2k.Params.Presolve = 0
+	    print('\nResolviendo master problem: k=%d' % k)
 	    model_p2k.optimize()
+	    #break # para chequear si tuvo warnings en p2^k
 	    # definir z[k]
 	    mu[k] = {}
+	    z[k] = {}
 	    for r in range(nresource_side_constraints):
 	        for t in range(nperiods):
 	            mu[k][r,t] = side_const[r,t].pi
-	    if mu[k] == mu[k-1]: # Cambiar por una tolerancia!!!
-	        # recuperar z[k] la solucion del optimo
-	        z[k] = quicksum([lmbda[j].x*((b,d,t) in C[j,k]) for j in range(1,l+1)])
+
+	    for (b,d,t) in blocks_prime:
+	    	z[k][b,d,t] = sum(lmbda[j].x*((b,d,t) in C[j,k]) for j in range(1,l+1))
+	    
+	    opt = sum([c[b,d,t]*(z[k][b,d,t]-z[k][b,d-1,t]) for b,d,t in blocks_prime if d>0 and t>0])\
+	        +sum([c[b,0,t]*(z[k][b,0,t]-z[k][b,ndestinations-1,t-1]) for (b,d,t) in blocks_prime if d==0 and t>0])\
+	        +sum([c[b,0,0]*z[k][b,0,0] for b in blocks])
+	    if all([isclose(mu[k][r,t], mu[k-1][r,t]) for r,t in resourceTimesPeriod]): 
 	        print('Algoritmo termino: mu[%d] = mu[%d]' % (k,k-1))
+	        print('OPT de BZ: %.2f' % (model_p2k.ObjVal*(1/obj_scale)))
 	        break
 	    k += 1
