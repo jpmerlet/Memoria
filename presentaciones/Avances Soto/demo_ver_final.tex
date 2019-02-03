@@ -1,0 +1,546 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[activeacute,spanish,es-nodecimaldot]{babel}
+\usepackage[left=1.5cm,top=1.5cm,right=1.5cm, bottom=1.5cm,letterpaper, includeheadfoot]{geometry}
+%\usepackage[parfill]{parskip}
+
+\usepackage{amssymb, amsmath, amsthm}
+\usepackage{graphicx}
+\usepackage{lmodern,url}
+\usepackage{paralist} %util para listas compactas
+
+% paquetes agregados por mi
+% para escribir algoritmos
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+
+
+\usepackage{tikz}
+%\usetikzlibrary{positioning,chains,fit,shapes,calc}
+\usetikzlibrary{positioning, shapes, arrows,decorations.text}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{ mathdots }
+\usepackage{verbatim}
+\usepackage{ stmaryrd }
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancypagestyle{plain}{%
+\fancyhf{}
+\lhead{\footnotesize\itshape\bfseries\rightmark}
+\rhead{\footnotesize\itshape\bfseries\leftmark}
+}
+
+
+% macros
+\newcommand{\Q}{\mathbb Q}
+\newcommand{\R}{\mathbb R}
+\newcommand{\N}{\mathbb N}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\C}{\mathbb C}
+
+% macros jp
+\newcommand{\cev}[1]{\reflectbox{\ensuremath{\vec{\reflectbox{\ensuremath{#1}}}}}}
+\newcommand{\sfunction}[1]{\textsf{\textsc{#1}}}
+\algrenewcommand\algorithmicforall{\textbf{foreach}}
+\algrenewcommand\algorithmicindent{.8em}
+\newcommand{\val}[1]{\text{val}(#1)}
+
+%Teoremas, Lemas, etc.
+\theoremstyle{plain}
+\newtheorem{teo}{Teorema}
+\newtheorem{lem}{Lema}
+\newtheorem{prop}{Proposición}
+\newtheorem{cor}{Corolario}
+
+\theoremstyle{definition}
+\newtheorem{defi}{Definición}
+% fin macros
+
+%%%%% NOMBRE ESCRIBAS Y FECHA
+\newcommand{\sca}{Escriba Uno}
+\newcommand{\scb}{Escriba Dos}
+\newcommand{\scc}{Escriba Tres}
+\newcommand{\catnum}{0} %numero de catedra
+\newcommand{\fecha}{5 de noviembre 2018 }
+
+%%%%%%%%%%%%%%%%%%
+
+%Macros para este documento
+\newcommand{\cin}{\operatorname{cint}}
+
+\begin{document}
+%Encabezado
+\fancyhead[L]{Facultad de Ciencias Físicas y Matemáticas}
+\fancyhead[R]{Universidad de Chile}
+\vspace*{-1.2 cm}
+%\begin{minipage}{0.6\textwidth}
+%\begin{flushleft}
+%\hspace*{-0.5cm}\textbf{MA4702. Programación Lineal Mixta. 2018.}\\
+%\hspace*{-0.5cm}\textbf{Profesor:} José Soto\\
+%\hspace*{-0.5cm}\textbf{Escriba(s):} \sca, \scb~y \scc.\\
+%\hspace*{-0.5cm}\textbf{Fecha:} \fecha.
+%\end{flushleft}
+%\end{minipage}
+\begin{flushleft}
+\includegraphics[scale=0.15]{fcfm}
+\end{flushleft}
+\bigskip
+%Fin encabezado
+
+
+\subsection{Algunos resultados de aproximación para ATMP (caso ganancias lineales)}
+
+Sea $P$ el problema ATMP (asginaci\'on de trabajos en m\'aquinas paralelas). Se estudiar\'an algoritmos de aproximaci\'on para el caso en que las curvas de ganancia para cada trabajo $i \in [n]$ tienen la forma:
+
+
+%\begin{center}
+%\textit{Se tienen $n$ trabajos y $m$ m\'aquinas. Cada trabajo $i \in [n]$ tiene asociado una tasa de ganancia $p_i$ y un tiempo $x_i$ tales que la ganancia $g_i(t)$ obtenida por procesar dicho trabajo $t$ unidades de tiempo est\'a dada por}
+$$
+g_i(t) = \left\{\begin{array}{lr}
+p_i t & t \leq t_i \\
+p_i t_i & t>t_i
+\end{array}\right.
+$$
+donde $p_i$ es la tasa de ganancia asociada al trabajo $i-$\'esimo, y $t_i$ es el tiempo de proceso m\'aximo despu\'es del cual el trabajo $i$ deja de aportar beneficio. Suponagmos que los trabajos est\'an indexados de modo que:
+\begin{equation}
+\label{eq:trabajosOrd}
+p_1 > p_2 > \cdots > p_n
+\end{equation}
+
+%\textit{El objetivo es encontrar una asignaci\'on de trabajos a m\'aquinas de m\'aximo beneficio tal que:}
+%\begin{enumerate}
+%\item Sea $t_j$ el instante en que termina el \'ultimo trabajo la m\'aquina $j-$\'esima. Entonces $t_j \leq 1$.
+%
+%\item 
+%\end{enumerate}
+%\end{center}
+
+
+
+%Sea $\val{\text{OPT}}$ el valor de alguna asignación \'optima para el problema $P$. A continuación se enuncian un par de proposiciones que serán \'utiles m\'as adelante (la demostración del segundo queda pendiente).
+
+\begin{defi}[Asignación]
+Una asignación $\mathcal{A}$ es una tupla $(A,T,M,X)$ donde:
+\begin{itemize}
+\item $A \subseteq [n]$ es el conjunto de \textit{trabajos asignados}.
+\item $T = \{y_i\}_{i \in A}$ son los \textit{tiempos de proceso} de cada trabajo $i \in A$.
+\item $M = \{m_i\}_{i \in A}$ es el conjunto de máquinas asignadas para cada trabajo en $A$.
+%\item $X$ es el conjunto de \textit{posiciones} de procesamiento de cada trabajo $i \in A$ en $m_i$, i.e. $i$ es el $x_i-$ésimo trabajo procesado en la máquina $m_i$.
+\end{itemize}
+\end{defi}
+
+Se denotará por $\val{\mathcal{A}}$ al \textit{valor} de la asignación $\mathcal{A}$, y diremos que un trabajo fue \textit{cortado} según la asignación $\mathcal{A}$ si $0<y_i < t_i$. 
+\begin{lem}
+\label{lem:cortes}
+Sea $\mathcal{A}$ una asignación factible. Entonces se puede obtener una asignación $\mathcal{A}'$ a partir de $\mathcal{A}$ de modo que solo se haya cortado un trabajo por máquina, y $\val{\mathcal{A}'} \geq \val{\mathcal{A}}$.
+\end{lem}
+\begin{proof}
+Sean $i,j$ dos trabajos cortados según $\mathcal{A}$, sin pérdida de generalidad supongase que  $p_i \geq p_j$. El tiempo disponible que le queda al trabajo $i$ para poder ser procesado y aumentar su contribución al beneficio está dado por $t_i-y_i$. Luego, basta hacer los cambios $y_i' \gets y_i + \min\{t_i-y_i,y_j\}$, $y_j' \gets y_j -\min\{t_i-y_i,y_j\}$, y definir $T'$ con estos nuevos tiempos de proceso $y_i'$ y $y_j'$ para los trabajos $i$ y $j$, respectivamente. Definiendo $\mathcal{A}'$ con estos nuevos tiempos de proceso, se tiene que, o bien $i$ se realiza en $t_i$, o bien el trabajo $j$ se deja de realizar. Luego el numero de trabajos cortados disminuye al menos en $1$. Por otro lado, dado que $p_i \geq p_j$ se tiene que:
+$$
+\val{\mathcal{A}'} \geq \val{\mathcal{A}}
+$$
+\end{proof}
+
+Otro resultado de utilidad es el siguiente.
+\begin{lem}
+\label{lem:caracOPT}
+Sea $\mathcal{A} = (A,T,M)$ alguna asignación óptima para el problema $P$. Se tiene entonces que: 
+\begin{equation}
+\label{eq:caractOPT}
+p_i \geq p_j \quad \forall i \in A,\ j \in [n]\setminus{A}
+\end{equation}
+i.e., el óptimo asigna los trabajos con mejor pendiente.
+\end{lem}
+\begin{proof}
+Por contradicción, supongase que existen $i\in A,j \in [n]\setminus{A}$ tales que no se cumple (\ref{eq:caractOPT}). Entonces haciendo el cambio $y_i \gets 0$ y $y_j \gets \min\{y_i,t_j\}$, se tendría un asignamiento $\mathcal{A}'$ tal que:
+$$
+\val{\mathcal{A}'} > \val{\mathcal{A}}
+$$
+lo cual contradide la optimalidad de  $\mathcal{A}$.
+\end{proof}
+De los lemas (\ref{lem:cortes}) y (\ref{lem:caracOPT}) se concluye directamente el siguiente resultado:
+\begin{prop}
+\label{prop:final}
+Existe una asignación $\mathcal{A} = (A,T,M)$ óptima para $P$ que cumple las siguientes características:
+\begin{enumerate}
+\item  $p_i \geq p_j$, para $i \in A$, $j \in [n]\setminus{A}$.
+\item Toda máquina corta a lo más un trabajo.
+\end{enumerate}
+\end{prop}
+
+\textbf{Obs:} De la proposición (\ref{prop:final}) y de el orden de las pendientes en (\ref{eq:trabajosOrd}) se puede deducir que existe una asignación óptima tal que el conjunto de trabajos asignados tiene la forma $A = [\ell]$ para algún $\ell \in [n]$.\\~\\
+
+%\begin{proof}
+%En efecto, considere una máquina $j$ y supongamos que existen dos trabajos $j_1$ y $j_2$ tales que cada uno se procesa un tiempo $h_1 < x_{j_1}$ y $h_2 < x_{j_2}$, respectivamente. Sin perdida de generalidad, supongamos que $p_1 \geq p_2$. Llamese por $A$ la presente asignaci\'on. Se separar\'a el an\'alisis en diferentes casos:
+%\begin{itemize}
+%\item \textbf{caso $h_2 \geq x_{j_1}-h_1$}:
+%
+%En este caso, como $p_1 \geq p_2$, basta con reemplazar el tiempo de proceso de $j_2$ por tiempo de proceso de $j_1$, de modo que $j_1$ no sea cortado, y $j_2$
+%\end{itemize}
+%\end{proof}
+
+Para encontrar un algoritmo de aproximaci\'on, dividiremos el problema según el \textit{largo} de los trabajos. Para ello, sea $k \in \N$ fijo.
+\subsubsection*{caso $x_i \leq 1/k \quad \forall i \in [n]$}
+
+%Sea $P$ el problema ATMP, y considerese $P'$ el problema donde, en vez de tener la restricción de dead line igual a $1$, ahora solo se pide que cada trabajo asignado haya partido antes de $1$. Además, considere que los largos de cada trabajo cumplen la relación $x_i \leq 1/k$, para algún $k \in \N$ fijo. Como antes, hay $n$ trabajos a agendar y $m$ el número de máquinas. Pir último, considere el siguiente algoritmo:
+
+%Para el problema $P$, sea $\text{OPT}$ el valor de la asignación optima. A continuación enunciamos un par de proposisiones que serán utiles:
+
+Para el presente caso se mostrar\'a que un algoritmo glot\'on logra una $(1+1/k)^2$ aproximaci\'on. Considere para ello una variante del problema $P$, llamada $P'$, donde se realizan los siguientes cambios en las restricciones: 
+\begin{enumerate}
+\item Todo asignación $\mathcal{A}$ tiene que conjunto de trabajos asignados de la forma $A=[\ell]$, para algún $\ell \in [n]$. 
+\item Para todo $i \in A$, $y_i = t_i$.
+\item Todo trabajo agendado debe partir antes de $1$. 
+\end{enumerate}
+
+Para describir el algoritmo Considere las siguientes notaciones. Sea $j \in [m]$ una m\'aquina cualquiera:
+\begin{itemize}
+\item $L_j$: instante en que la máquina $j$ termina el \'ultimo trabajo.
+%\item $t$: instante m\'as chico en que se termina el \'ultimo trabajo asignado.
+\item $\ell$: \'ultimo trabajo asignado.
+\item $m_\ell$: m\'aquina a la que se asigna el trabajo $\ell$ (un valor de $0$ indica que no ha sido asignado).
+\item $x_\ell$: instante en el que el trabajo $\ell$ parte.
+\end{itemize}
+Con esto se puede describir un algoritmo glot\'on para $P'$:
+\begin{algorithm}[H]
+\caption{Glotón para $P'$}\label{alg:greddyP'}
+\begin{algorithmic}[1]
+
+\State ordenar las pendientes de modo que $p_1 \geq p_2 \geq p_3 \geq \cdots \geq p_n$  \;
+\State $\ell \gets 0$\;
+\For{$i: 1 \to n$}
+	\State $L_i \gets 0$\;
+	\State $m_i \gets 0$\;
+\EndFor
+\While {$\min\{L_j:j \in [m]\}\leq 1$}
+	\State $\ell \gets \ell+1$\;
+	\State $j \gets \text{argmin}\{L_j: j \in [m]\}$\;
+	\State $m_\ell \gets j$\;
+	\State $L_j \gets \sum_{i = 1}^n \llbracket m_i=m_\ell\rrbracket t_i + t_\ell$
+	\State $x_\ell \gets L_j-t_\ell$\;
+\EndWhile
+\State \textbf{end}
+\State \textbf{Return } $(A = [\ell], X = \{x_i\}_{i=1}^\ell, M = \{m_i\}_{i=1}^{\ell})$
+\end{algorithmic}
+\end{algorithm}
+
+
+Se denotará por ALG al algoritmo (\ref{alg:greddyP'}). Antes de probar que ALG induce una $(1+1/k)^2$ aproximación para el problema $P$, un resultado que es de utilidad:
+
+\begin{prop}
+\label{prop:appP'}
+ALG es una $1+1/k$ aproximación para el problema $P'$.
+\end{prop}
+\begin{proof}
+En efecto, sea $\mathcal{A}_{P'}$ una asignación óptima para $P'$, y sea $\mathcal{A}_{\text{ALG}}$ la asignación entregada por ALG, y considere $A_{P'} = [\ell_{P'}]$ y $A_{\text{ALG}}= [\ell_{\text{ALG}}]$. Dada la condición (\ref{eq:trabajosOrd}), sabemos el último trabajo asignado por ALG cumple que
+\begin{equation}
+\label{eq:minorante}
+p_{\ell_{\text{ALG}}} \leq p_i \quad \forall i \in [\ell_{\text{ALG}}]
+\end{equation}
+Por otro lado, es claro que $\ell_{\text{ALG}} \leq \ell_{\text{OPT}}$. Denotemos por $\val{\text{ALG}}$ y $\val{\text{OPT}}$ los valores de la función objetivo para los agendamientos de ALG y OPT respectivamente. Entonces:
+\begin{align*}
+\val{\text{OPT}} &= \sum_{i = 1}^{\ell_{\text{OPT}}} p_i t_i \\
+		  &= \sum_{i=1}^{\ell_\text{ALG}}p_i t_i + \sum_{i = \ell_{\text{ALG}}+1}^{\ell_{\text{OPT}}}p_it_i\\
+		  &\leq \val{\text{ALG}}+p_{\ell_\text{ALG}} \sum_{i = \ell_{\text{ALG}}+1}^{\ell_{\text{OPT}}}t_i \\
+		  &\leq \val{\text{ALG}}+p_{\ell_\text{ALG}} + p_{\ell_\text{ALG}} m\frac{1}{k} \qquad (\star)
+\end{align*}
+donde $(\star)$ por otro lado, notemos que:
+\begin{align*}
+\val{\text{ALG}} &= \sum_{i=1}^{\ell_{\text{ALG}}} p_i t_i \\
+		  &\geq p_{\ell_{\text{ALG}}}\sum_{i=1}^{\ell_{\text{ALG}}} t_i\\
+		  &\geq p_{\ell_{\text{ALG}}}m
+\end{align*}
+Así, juntando los dos desarrollos anteriores se concluye que:
+$$
+\val{\text{OPT}} \leq \left(1 + \frac{1}{k}\right) \val{\text{ALG}}
+$$
+\end{proof}
+De la proposcición (\ref{prop:appP'}) se deduce el siguiente corolario:
+\begin{cor}
+ALG induce una asignación para el problema $P$ que es una $(1+1/k)^2$ aproximación.
+\end{cor}
+\begin{proof}
+Sean $\val{\text{OPT}^P}$ y $\val{\text{OPT}^{P'}}$ los valores óptimos de $P$ y $P'$, respectivamente. Más aún, consideremos la asignación óptima de $P$ con la estructura descrita en la observación de la proposición (\ref{prop:final}). Dicha asignación para $P$ tiene beneficio dado por $\val{\text{OPT}^P}$, y ademas cumple con ser una asignación factible para $P'$, luego:
+\begin{equation}
+\label{eq:PP'}
+\val{\text{OPT}^P} \leq \val{\text{OPT}^{P'}}
+\end{equation}
+
+gracias a la proposición (\ref{prop:appP'}), se tiene además que:
+$$
+\val{\text{OPT}^P} \leq \val{\text{OPT}^{P'}} \leq \left(1+\frac{1}{k} \right)\val{\text{ALG}}
+$$
+
+Por otro lado, el beneficio $\val{\text{ALG}}$ puede ser dividido en el valor obtenido por los trabajos procesados hasta el instante $1$, y el valor asociado a los que se procesaron en instantes posteriores
+\begin{equation}
+\label{eq:divP'}
+\val{\text{ALG}} = \val{\text{ALG}_{>1}} + \val{\text{ALG}_{\leq 1}}
+\end{equation}
+
+Se demostrar\'a entonces que
+\begin{equation}
+\label{eq:cotaP'}
+\val{\text{ALG}_{>1}} \leq \frac{1}{k}\val{\text{ALG}_{\leq 1}}
+\end{equation}
+
+Notar que de (\ref{eq:cotaP'}), (\ref{eq:divP'}) y (\ref{eq:PP'}) se deduce directamente que:
+\begin{equation*}
+\val{\text{OPT}^P} \leq \left( 1 + \frac{1}{k} \right)^2\val{\text{ALG}_{\leq 1}}
+\end{equation*}
+
+Así, basta probar (\ref{eq:cotaP'}) para concluir el resultado. Para ello, considere por un momento los trabajos asignados a una máquina $j \in [m]$, y abusando de notación llamemos $p_1 \ldots p_l$ las pendientes de los trabajos asignados a dicha máquina, realizados en el mismo orden de indexación. El tiempo que ALG procesa el último trabajo en la máquina $j$, $t_\ell$, puede ser escrito como $t_\ell = \tilde{t}_\ell + t'_\ell$, donde $\tilde{t}_\ell$ es la cantidad de tiempo que ALG procesa $\ell$ hasta el instante $1$, y $t'_\ell$ es el tiempo que se procesa $\ell$ después del instante $1$. Sea $\val{\text{ALG}_{j,\leq 1}}$ el valor asociado a los trabajos que se procesan hasta el instante $1$ en la máquina $j$, i.e.
+\begin{equation}
+\label{eq:ganjP}
+\val{\text{ALG}_{j,\leq 1}}  = \sum_{i <\ell} p_i t_i + p_\ell \tilde{t}_\ell
+\end{equation} 
+Luego, notemos que $1 = \sum_{i<\ell} t_i + \tilde{t}_{\ell}$, de donde
+
+\begin{equation*}
+ p_\ell(1-\tilde{t}_\ell) = p_\ell\sum_{i < \ell} t_i = \sum_{i < \ell} p_\ell t_i \leq  \sum_{i < \ell} p_i t_i
+\end{equation*}
+donde la última desigualdad viene del hecho de que ALG asigna los trabajos en orden decreciente de pendiente, de modo que $p_\ell \leq p_i \ \forall i \in [\ell]$. Del último desarrollo se tiene que
+\begin{equation}
+\label{eq:cotasGan}
+p_\ell \leq \sum_{j < \ell} p_j t_j + p_\ell \tilde{t}_\ell
+\end{equation}
+usando que $t_\ell \leq 1/k$, se deduce que
+\begin{equation}
+\label{eq:cotaAntesDps}
+p_\ell t'_\ell \leq \frac{1}{k}\left(\sum_{j < \ell} p_j t_j + p_\ell \tilde{t}_\ell \right) = \frac{1}{k}\val{\text{ALG}_{j,\leq 1}}
+\end{equation}
+Así, considere ahora $\ell_1, \ldots, \ell_m$ los \'ultimos trabajos que cada m\'aquina procesa seg\'un ALG, y sus respectivos $\{p_{\ell_i}\}_{i=1}^m$ y $\{t_{\ell_i}\}_{i=1}^m$. Notar que
+$$
+\val{\text{ALG}_{>1}} = \sum_{i = 1}^m p_{\ell_i}t'_{\ell_i}, \quad   \val{\text{OPT}_{\leq 1}}  = \sum_{i=1}^m \text{ALG}^{P'}_{j_i,\leq 1}  
+$$
+Entonces, por la desigualdad (\ref{eq:cotaAntesDps}) se puede deducir que
+\begin{equation*}
+\val{\text{ALG}_{>1}} = \sum_{i = 1}^m p_{\ell_i} t'_{\ell_i} \leq \sum_{i=1}^m \frac{1}{k} \val{\text{ALG}_{j_i,\leq 1}} = \frac{1}{k} \val{\text{ALG}_{\leq 1}}
+\end{equation*}
+lo que termina la demostración.
+\end{proof}
+\newpage
+Se puede lograr una $(1+1/k)$ aproximación del problema $P$ sin pasar por $P'$, usando el siguiente hecho:
+\begin{lem}
+\label{lem:cotaell}
+Sean $\mathcal{A}_P = (A_P = [\ell_P], T^P =\{y^P_i\}_{i=1}^{\ell_P},M^P)$ y $\mathcal{A}_{\text{ALG}} = (A_{\text{ALG}} = [\ell_{\text{ALG}}], T^{\text{ALG}} =\{y^{\text{ALG}}_i\}_{i=1}^{\ell_{\text{ALG}}},M^{\text{ALG}})$, las asignaciones del óptimo para P y la de ALG, respectivamente, tomando a $\mathcal{A}_P$ con la estructura dada por la proposición (\ref{prop:final}). Entonces
+\begin{equation*}
+\ell_P \leq \ell_{\text{ALG}}
+\end{equation*}
+\end{lem}
+\begin{proof}
+Por contradicción, supongamos que $\ell_P > \ell_{\text{ALG}}$. Con lo anterior, sabemos que $P$ debe procesar a los trabajos $1\ldots \ell_{\text{ALG}}$, y por otro lado sabemos que 
+$$
+\sum_{i = 1}^{\ell_{\text{ALG}}} \llbracket m^{\text{ALG}}_i = j\rrbracket y^{\text{ALG}}_i = 1 \qquad \forall j \in [m] 
+$$  
+Es decir, sabemos que los tiempos de proceso para los trabajos $1\ldots \ell_{\text{ALG}}$ dados por $T^{\text{ALG}}$ son tales que utilizan todo el tiempo disponible por maquina. Lo anterior implica que debe existir algún trabajo $i \in [\ell_{\text{ALG}}]$ tal que $t_i \geq y^{\text{ALG}}_i > y^P_i$, y $m^P_i = m^P_{\ell_P+1}$ (es decir, $i$ y $\ell_P + 1$ son asignados a la misma m\'aquina por $\mathcal{A}_P$). Entonces, se puede mejorar la asignaci\'on realizada por el \'optimo, asignando m\'as tiempo de proceso a $i$ y correspondientemente asignandole menos tiempo de proceso a $\ell_P + 1$. Para ello, sea $t>0$ definido por
+
+$$
+t := \min\{t_i-y^P_i,y^P_{\ell_P + 1}\}
+$$
+Así, llamemos $\mathcal{A}'_P$ a la asignaci\'on que se obtiene de modificar $\mathcal{A}_P$ al reemplazar $y^P_i \gets y^P_i+t$, $y^P_{\ell_P +1} \gets y^P_{\ell_P +1}-t$, se tiene que la asignación resultante es factible y tiene valor estrictamente más grande que $\mathcal{A}_P$ (pues $p_i > p_{\ell_P + 1}$), contradiciendo la optimalidad de $\mathcal{A}_P$. 
+\end{proof}
+
+Con lo anterior, se puede obtener el siguiente resultado:
+\begin{cor}
+\label{cor:appPchico}
+ALG induce una asignaci\'on que es una $(1+1/k)$ aproximación para el problema P.
+\end{cor}
+
+\begin{proof}
+En efecto, consideremos la notación del lema (\ref{lem:cotaell}). Como $A_P \subseteq A_{\ell_{\text{ALG}}}$, y dado que $t_i \geq y^P_i$ para $i \in [\ell_{\text{ALG}}]$, se tiene que
+
+\begin{align*}
+\val{\mathcal{A}_\text{P}} &= \sum_{i=1}^{\ell_P} p_i y^P_i \\
+						&\leq \sum_{i=1}^{\ell_P} p_i t_i \\
+						&\leq \sum_{i=1}^{\ell_{\text{ALG}}} p_i t_i = \val{\mathcal{A}_\text{ALG}}\\
+\end{align*}
+Luego, de igual manera que en demostraciones anteriores, se puede demostrar que:
+
+\begin{align*}
+\val{\mathcal{A}_\text{ALG}} &= \val{\mathcal{A}_\text{ALG}}_{\leq 1} + \val{\mathcal{A}_\text{ALG}}_{> 1}\\
+\val{\mathcal{A}_\text{ALG}}_{> 1} &\leq \frac{1}{k} \val{\mathcal{A}_\text{ALG}}_{\leq 1}
+\end{align*}
+
+donde $\val{\text{ALG}}_{\leq 1}$ es el valor obtenido por los trabajos procesados hasta el instante $1$, mientras que $\val{\text{ALG}}_{>1}$ es valor de los trabajos procesados despu\'es del instante $1$. Con lo anterior se concluye que:
+$$
+\val{\mathcal{A}_\text{P}} \leq \left(1 + \frac{1}{k} \right)\val{\mathcal{A}_\text{ALG}}_{\leq 1}
+$$ 
+lo que termina la demostraci\'on
+\end{proof}
+
+Consideremos por \'ultimo una variaci\'on del problema $P$, que llamaremos $P_C$, donde $C$ es un conjunto de capacidades para cada m\'aquina, esto es $C = \{c_j\}_{j = 1}^m$, con $c_j \geq c$ para alg\'un $c>0$, para todo $j\in [m]$, y en vez de suponer que $t_i \leq 1/k$ para cada trabajo, suponer que $kt_i \leq c$ para $i \in [n]$. Luego, se tiene el siguiente resultado:
+\begin{lem}
+\label{lem:CasoCapVar}
+Con los supuestos de arriba, se tiene que ALG induce una $(1+1/k)$ aproximaci\'on. 
+\end{lem}
+\begin{proof}
+An\'alogamente a lo que se ha demostrado en los resultados anteriores, se tiene que
+$$
+\val{\mathcal{A}_P} \leq \val{\mathcal{A}_{\text{ALG}}}
+$$
+Lo anterior viene del hecho de que para esa cota nunca fue relevante el tama\~no de los trabajos, si no que $\ell_P \leq \ell_{\text{ALG}}$. La \'unica parte donde se utilizo que $t_i \leq 1/k$ fue para mostrar que:
+$$
+\val{\mathcal{A}_{\text{ALG}}}_{> 1} \leq \frac{1}{k} \val{\mathcal{A}_{\text{ALG}}}_{ \leq 1}
+$$
+Para mostrar lo anterior, consideremos la $j$-\'esima m\'aquina, denotando  por $\val{\mathcal{A}_{\text{ALG}}}_{j}$ el valor que aportan los trabajos asignados a la $j$-ésima máquina. Para simplificar notación, denotemos por $\{p^j_k\}_{k=1}^{\ell_j}$ a las tasas de ganancia de los trabajos asignados a la máquina $j$, donde $\ell_j$ es el último trabajo asignado, y por $\{y^j_k\}_{k=1}^{\ell_j}$ a los tiempos de proceso de dichos trabajos según glotón. El tiempo de proceso del último trabajo puede dividirse en dos sumandos, i.e.
+
+$$
+y^j_{\ell_j} = y^j_{\ell_j, \leq 1} + y^j_{\ell_j, > 1}
+$$
+
+Es decir, el tiempo de proceso del último trabajo  puede dividirse en el tiempo que se utilizó antes del instante $1$ ($y^j_{\ell_j, \leq 1}$) y el tiempo de proceso después del instante $1$.  Por otro lado, tenemos que
+$$
+y^j_{\ell_j, > 1} = \sum_{k=1}^{\ell_j} y^j_k-c_j
+$$
+y como $k y^j_{\ell_j, > 1}\leq k t_{\ell_j}\leq c \leq c_j$, sigue que
+$$
+y^j_{\ell_j, > 1} \leq \sum_{k=1}^{\ell_j}y^j_k -ky^j_{\ell_j, > 1}
+$$
+Entonces, usando que $p^j_{\ell_j}<p^j_k$ para $k \in [\ell_j - 1]$, se puede deducir que
+\begin{align*}
+\val{\mathcal{A}_{\text{ALG}}}_{j,>1} &= p^j_{\ell_j}y^j_{\ell_j, > 1}\\
+									  &\leq \sum_{k=1}^{\ell_j} y^j_kp^j_{\ell_j} - kp^j_{\ell_j}y^j_{\ell_j, > 1}\\
+									  &= \sum_{k=1}^{\ell_j-1} y^j_kp^j_{\ell_j} + y^j_{\ell_j}p^j_{\ell_j}-kp^j_{\ell_j}y^j_{\ell_j, >1}\\
+									  &\leq \sum_{k=1}^{\ell_j-1}y^j_k p_k^j + y^j_{\ell_j}p^j_{\ell_j}-kp^j_{\ell_j}y^j_{\ell_j, >1}\\
+									  &=\val{\mathcal{A}_{\text{ALG}}}_{j,\leq 1} + y^j_{\ell_j,>1}p^j_{\ell_j}-kp^j_{\ell_j}y^j_{\ell_j,>1}\\
+									  &=\val{\mathcal{A}_{\text{ALG}}}_{j,\leq 1}-(k-1)\underbrace{p^j_{\ell_j}y^j_{\ell_j,>1}}_{\val{\mathcal{A}}_{j,>1}}\\
+\end{align*}
+Luego
+$$
+k \val{\mathcal{A}_{\text{ALG}}}_{j,>1} \leq \val{\mathcal{A}_{\text{ALG}}}_{j,\leq 1}
+$$
+
+Así, sumando sobre las máquinas la desigualdad anterior, se puede deducir que 
+$$
+k \val{\mathcal{A}}_{>1} \leq \val{\mathcal{A}}_{\leq 1}
+$$
+y entonce se concluye la demostración notando que
+$$
+\val{\mathcal{A}_P} \leq \val{\mathcal{A}_{\text{ALG}}} = \left(1+ \frac{1}{k}\right)\val{\mathcal{A}_{\text{ALG}}}_{\leq 1}
+$$
+\end{proof} 
+Con el lema anterior se tiene que, para que el algoritmo (\ref{alg:greddyP'}) induzca una $(1+1/k)$ aproximación para  el problema $P$, es suficiente que el tiempo disponible por máquina para procesar trabajos sea al menos $k$ veces el largo de los trabajos (en verdad, $k$ veces una cota superior para el largo de los trabajos).
+
+Con esto en mente, ahora se procederá a estudiar el caso en que no todos los trabajos cumplen $t_i \leq 1/k$, y hay trabajos \textit{largos} (i.e. $t_i > 1/k$). Para ello, primero supongamos que disponemos de la asignación de los trabajos largos en cada máquina (i.e.):
+
+\begin{enumerate}
+\item Los trabajos largos asignados que se procesan completamente (i.e. en los tiempos $t_i$).
+\item De ser el caso, el trabajo largo cortado en dicha máquina.
+\item El tiempo disponible por máquina, i.e. el tiempo que no fue utilizado por los trabajos largos.
+\item Por último, y esto en general, se dispone de $\ell$, los trabajos que serán asignados. 
+\end{enumerate} 
+
+Eventualmente, podría pasar que hay máquinas sin trabajos largos asignados. Como  
+%Recordemos que algoritmo (\ref{alg:greddyP'}) retorna $\mathcal{A}_{\text{ALG}} = ((A = [\ell_{\text{ALG}}], X = \{x_i\}_{i=1}^{\ell_{\text{ALG}}}, M = \{m_i\}_{i=1}^{\ell_{\text{ALG}}}))$. Para simplif
+\newpage
+\subsubsection*{Caso $t_i \leq 1/k$, para $k \in \N$}
+
+Para obtener una aproximación del valor óptimo para el problema $P$, considérese la siguiente variante de éste: 
+\begin{enumerate}
+\item Todo asignación $\mathcal{A}$ tiene que conjunto de trabajos asignados de la forma $A=[\ell]$, para algún $\ell \in [n]$. 
+\item Para todo $i \in A$, $y_i = t_i$.
+\item Todo trabajo asignado debe partir antes de $1+1/k$. 
+\end{enumerate}
+
+Para el presente caso, se utiliza el mismo algoritmo glotón (\ref{alg:greddyP'}), pero cambiando la restricción de \texttt{while} menor que $1$ por $1+1/k$. Luego se tiene el siguiente resultado.
+
+\begin{lem}
+\label{lem:eles}
+Sean $\mathcal{A}_{\text{ALG}} = (A_{\text{ALG}} = [\ell_{\text{ALG}}], T_{\text{ALG}}, M_{\text{ALG}})$ y $\mathcal{A}_{P} = (A_P = [\ell_P], T_P, M_P)$ las asignaciones de ALG y de algún óptimo para $P$, con la forma de la asignación dada por la proposición (\ref{prop:final}). Entonces $\ell_P \leq \ell_{\text{ALG}}$.
+\end{lem}
+
+\begin{proof}
+
+\end{proof}
+
+Consideremos las asignaciones enunciadas en el lema anterior, y denotemos por $\val{\mathcal{A}_{\text{ALG}}}$ y $\val{\mathcal{A}_P}$ los valores respectivos. Por el lema anterior, y dado que los trabajos asignados por ALG se procesan de manera completa (i.e. en los $t_i$'s), se tiene que
+$$
+\val{\mathcal{A}_P} = \sum_{i = 1}^{\ell_P} p_i y^P_i \leq \sum_{i = 1}^{\ell_{\text{ALG}}} y^P_i p_i \leq \sum_{i = 1}^{\ell_{\text{ALG}}}t_i p_i=\sum_{i = 1}^{\ell_{\text{ALG}}} y^{\text{ALG}}_i p_i=\val{\mathcal{A}_{\text{ALG}}}
+$$
+
+Esto es
+
+\begin{equation}
+\label{eq:PauxMayorP}
+\val{\mathcal{A}_P} \leq \val{\mathcal{A}_{\text{ALG}}}
+\end{equation}
+
+Por otro lado, se tiene el siguiente lema:
+
+\begin{lem}
+\label{lem:cotaExtra}
+Sea $\val{\mathcal{A}_{\text{ALG}}}$ el valor de la asignación para $P'$. Digamos que $\val{\mathcal{A}_{\text{ALG}}}=\val{\mathcal{A}_{\text{ALG}}}_{\leq 1} + \val{\mathcal{A}_{\text{ALG}}}_{>1}$, i.e. $\val{\mathcal{A}_{\text{ALG}}}$ se puede dividir en el valor por los trabajos que se procesaron antes del instante $1$, y el valor correspondiente a los que se procesaron en instantes posteriores a $1$. Entonces:
+\begin{equation}
+\label{eq:cotaExtra}
+\val{\mathcal{A}_{\text{ALG}}}_{> 1} \leq \frac{2}{k} \val{\mathcal{A}_{\text{ALG}}}_{\leq 1}
+\end{equation}
+\end{lem}
+
+\begin{proof}
+Se puede probar igual que las anteriores, notando los trabajos asignados después del instante $1$ no serán procesados  una cantidad de tiempo superior a $2/k$. 
+\end{proof}
+
+\begin{cor}
+ALG induce una $1+2/k$ aproximación para el problema P, dada por los trabajos procesados hasta el instante 1.
+\end{cor}
+\begin{proof}
+
+\end{proof}
+
+Antes de terminar esta sección, consideremos una variante del problema $P$ donde se sabe que al menos hay $1-\gamma>0$ de tiempo disponible en cada máquina, y que cada trabajo $i$ cumple que $t_i \leq \alpha$, para algún $\alpha >0$. Entonces, de manera análoga a las demostraciones anteriores, se tiene que:
+
+\begin{lem}
+\label{lem:capCalpha}
+Con las condiciones enunciadas arriba, $\val{\mathcal{A}_{\text{ALG}}}_{>1} \leq \displaystyle \frac{1-\gamma}{2\alpha}\val{\mathcal{A}_{\text{ALG}}}_{\leq 1}$
+\end{lem}
+
+\begin{cor}
+\label{cor:cAlpha}
+ALG induce una $1+(1-\gamma)/2\alpha$ aproximación para el problema $P$.
+\end{cor}
+\newpage
+\subsubsection*{Caso $m$ constante.}
+
+Para este caso, consideremos que en vez de $k \in \N$, tenemos un parámetro $\alpha>0$ como en la demostración del lema (\ref{lem:capCalpha}), de modo que los trabajos $i$ tales que $t_i \leq \alpha$ son los trabajos cortos, y en caso contrario se llamarán trabajos largos.\\~\\
+
+Supongamos por un momento que somos capaces de adivinar la las asignaciones de los trabajos grandes en el óptimo, i.e. se sabe qué trabajos son asignados por $\mathcal{A}_P$ a cada máquina, de modo que también somos capaces de saber cuanto tiempo libre hay para los trabajos cortos. Sea $\gamma \in (0,1)$, y supongamos que en cada máquina se pondera el tiempo de proceso asignado a los trabajos largos por $\gamma$. Como los tiempos de proceso, por máquina, de los trabajos largos no pueden sumar más que $1$, se tiene que al menos hay $1- \gamma$ de espacio disponible para los trabajos pequeños por máquina. Dado lo anterior, tendremos que:
+$$
+\val{\mathcal{A}_\text{ALGext}} = \val{\mathcal{A}_{\text{ALGext}}}_{L} + \val{\mathcal{A}_{\text{ALGext}}}_{c} \geq  \gamma \val{\mathcal{A}_P}_{L} + \frac{1}{1+ \frac{1-\gamma}{2 \alpha}}\val{\mathcal{A_P}}_{c}
+$$
+Estudiemos si hay algún $\gamma$ tal que
+$$
+\gamma  = \frac{1}{1+\frac{1-\gamma}{2\alpha}}
+$$
+
+Esta última ecuación equivale a
+$$
+\gamma^2-(2\alpha+1)\gamma -2\alpha = 0
+$$
+La cual tiene solución
+$$
+\gamma_\pm = \frac{2\alpha+1\pm\sqrt{(2\alpha+1)^2-8\alpha}}{2} = \frac{2\alpha+1\pm|2\alpha-1|}{2}
+$$
+
+Luego, desarrollando se llega a que hay dos posibles soluciones a priori:
+
+$$
+\gamma_1 = 2 \alpha \qquad \gamma_2 = 1
+$$
+
+Notamos que $\gamma_2$ no es una solución factible cuando se considera $\gamma \in (0,1)$, y entonces la única opción es $\alpha < 1/2$ y usar $\gamma_1$, así se obtiene que
+$$
+\val{\mathcal{A}_{\text{ALGext}}} \geq 2\alpha \val{\mathcal{A}_P}
+$$
+
+Lo cual es un PTAS cuando el número de máquinas es constante, pues basta tomar $\varepsilon >0$ y $\alpha:= 1/2-\varepsilon/2$, obteniendo:
+
+$$
+\val{\mathcal{A}_{\text{ALG}}} \geq (1-\varepsilon)\val{A_P}
+$$
+%Para este caso, se puede resolver el problema de manera exacta en tiempo polinomial si se consideran $m$ y $k$ constantes. Para ello basta notar que la cantidad de trabajos que puede tener cada m\'aquina es menor que $km$, y entonces la cantidad de asignaciones factibles para $P$ en este caso es $O(m^{km})$
+
+\subsubsection*{Caso $m$ variable.}
+
+Para el caso de $m$ variable
+\end{document}
