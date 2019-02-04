@@ -8,7 +8,7 @@ from math import isclose
 # leer datos de minelib
 # obtener funcion objetivo del .pcpsp, para comparar
 # el resultado del modelo gurobi con el modelo AMPL
-data_name = 'marvin'
+data_name = 'zuck_small'
 pcpsp_path = '../minelib_inputs/' + data_name + '.pcpsp'
 prec_path = '../minelib_inputs/' + data_name + '.prec'
 upit_path = '../minelib_inputs/'+ data_name + '.upit'
@@ -19,6 +19,7 @@ resource_constraint_coefficients = {}
 with open(pcpsp_path, 'r') as f:
     for linea in f:
         linea_lista = linea.split()
+        print(linea_lista)
         if linea_lista[0] == 'NAME:':
             dato = linea_lista[1].strip('\n')
             name = dato
@@ -289,15 +290,20 @@ if __name__ == "__main__":
 	    # agregar restricciones de
 	    # precedencias.
 	    init_const = time.time()
+	    init_prec_1 = time.time()
 	    for t in range(nperiods-1):
 	        for b in blocks:
 	            model_p2k.addConstr(x_lmbda[b,ndestinations-1,t] <= x_lmbda[b,0,t+1])
 	    
+	    print('Agregar precedencias 1 : %.2f[s]' % (time.time()-init_prec_1))
+	    init_prec_2 = time.time()
 	    for d in range(ndestinations-1):
 	        for t in range(nperiods):
 	            for b in blocks:
 	                model_p2k.addConstr(x_lmbda[b,d,t] <= x_lmbda[b,d+1,t])
 
+	    print('Agregar precedencias 2: %.2f[s]' % (time.time()-init_prec_2))
+	    init_prec_3 = time.time()
 	    with open(prec_path, 'r') as f:
 	        for linea in f:
 	            linea_lista = linea.split()
@@ -309,6 +315,7 @@ if __name__ == "__main__":
 	                    for t in range(nperiods):
 	                        model_p2k.addConstr(x_lmbda[a,ndestinations-1,t] <= x_lmbda[b,ndestinations-1,t])
 	    
+	    print('Agregar precedencias 3: %.2f[s]' % (time.time()-init_prec_3))
 	    # agregar side constraints: si at_by_key:
 	    LHS_lmbda = {}
 	    #for r in range(nresource_side_constraints):
@@ -318,7 +325,7 @@ if __name__ == "__main__":
 	    #            LHS_lmbda[r,t] = LHS_lmbda[r,t] + quicksum([q[b,r,0]*(quicksum([lmbda[j]*((b,0,t) in C[j,k]) for j in range(1,eles[k]+1)])-quicksum([lmbda[j]*((b,ndestinations-1,t-1) in C[j,k]) for j in range(1,eles[k]+1)])) for b in blocks])
 	    #        else:
 	    #            LHS_lmbda[r,0] = LHS_lmbda[r,0] + quicksum([q[b,r,0]*(quicksum([lmbda[j]*((b,0,0) in C[j,k]) for j in range(1,eles[k]+1)])) for b in blocks])
-	    
+	    init_sd_qs = time.time()
 	    for r in range(nresource_side_constraints):
 	        for t in range(nperiods):
 	            sumando_1 = quicksum([q[b,r,d]*(x_lmbda[b,d,t]-x_lmbda[b,d-1,t]) for b,d in blockTimesDest if d>0])
@@ -327,14 +334,17 @@ if __name__ == "__main__":
 	            else:
 	                LHS_lmbda[r,0] = sumando_1+quicksum([q[b,r,0]*x_lmbda[b,0,0] for b in blocks])
 	    
+	    print('Construir LinExpr para side const.: %.2f[s]' % (time.time()-init_sd_qs))
 	    # agregar side constraints Dx <= d
 	    side_const = {}
 	    sc_scale = 1e0 # ponderador para side constraints (Dx <=d)
+	    init_sd_add = time.time()
 	    for r in range(nresource_side_constraints):
 	        for t in range(nperiods):
 	            side_const[r,t] = model_p2k.addConstr(sc_scale*LHS_lmbda[r,t] <= sc_scale*d_rhs[r,t], name='side_const[%d,%d]' % (r,t))
 	        
-	    print('Agregar restricciones: %.2f[s]' % (time.time()-init_const))
+	    print('Agrergar side const.: %.2f[s]' % (time.time()-init_sd_add))
+	    print('\n\nAgregar restricciones: %.2f[s]' % (time.time()-init_const))
 	    time_cm.append([time.time()-init_time])
 	    print('\nConstruccion del modelo P2^k tomo:%.2f' % (time.time()-init_time))
 	    print('\nResolviendo master problem: k=%d' % k)
