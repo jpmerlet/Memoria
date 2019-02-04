@@ -8,7 +8,7 @@ from math import isclose
 # leer datos de minelib
 # obtener funcion objetivo del .pcpsp, para comparar
 # el resultado del modelo gurobi con el modelo AMPL
-data_name = 'newman1'
+data_name = 'marvin'
 pcpsp_path = '../minelib_inputs/' + data_name + '.pcpsp'
 prec_path = '../minelib_inputs/' + data_name + '.prec'
 upit_path = '../minelib_inputs/'+ data_name + '.upit'
@@ -111,6 +111,14 @@ def check_optimality(sol,particion,ell,iteracion):
                 return False
     return True
 
+def check_opt_vect(sol, particion, ell, iteracion):
+    for h in range(1,ell[iteracion-1]+1):
+        arreglo = np.array([sol[iteracion][b].x for b in particion[h,iteracion-1]])
+        summ = np.matmul(arreglo,np.ones(arreglo.shape))
+        if not (np.isclose(summ,0) or np.isclose(summ,len(particion[h,iteracion-1]))):
+            return False
+    return True
+
 if __name__ == "__main__":
 	# resolver upit
 	upit = Model()
@@ -202,8 +210,14 @@ if __name__ == "__main__":
 	d_rhs = resource_constraint_ub_limits
 	w = {}
 	z = {}
+	eles = {}
+	eles[0] = 1
+	time_cm = []
+	problema_aux.setParam( 'OutputFlag', False ) # El modelo no imprime output en pantalla
 	while True:
-	    # STEP 2: resolver L(PCPby,mu[k-1])
+	    #if k==10:
+	    #    break
+	    # STEP 1: resolver L(PCPby,mu[k-1])
 	    suma = {}
 	    side_const = LinExpr()
 	    LHS = {}
@@ -214,64 +228,75 @@ if __name__ == "__main__":
 	                LHS[r,t] = sumando_1+quicksum([q[b,r,0]*(x[b,0,t]-x[b,ndestinations-1,t-1]) for b in blocks])
 	            else:
 	                LHS[r,0] = sumando_1+quicksum([q[b,r,0]*x[b,0,0] for b in blocks])
-
+	    
 	    fn_objetivo = cx_direct - quicksum([mu[k-1][r,t]*(LHS[r,t]-d_rhs[r,t]) for r,t in resourceTimesPeriod])
 	    problema_aux.setObjective(fn_objetivo, GRB.MAXIMIZE)
-	    # problema_aux.Params.Presolve = 0
+	    
 	    print('\nResolviendo problema auxiliar: k = %d' % k)
+	    problema_aux.Params.presolve = 0
 	    problema_aux.optimize()
 	    w[k] = x
 	    # verificar optimalidad de z[k-1]
-	    if k>=2 and check_optimality(w,C,l,k):
+	    init_time = time.time()
+	    if k>=2 and check_opt_vect(w,C,eles,k):
 	        print('Algoritmo termino: H^%d w[%d] = 0' % (k-1,k))
 	        print('Valor optimo de BZ: %.2f' % (model_p2k.ObjVal*(1/obj_scale)))
 	        break
-	    
-	    #STEP 3: encontrar particion de blocks_prime
-	    I = [(b,d,t) for (b,d,t) in blocks_prime if w[k][b,d,t].x == 1]
-	    O = [(b,d,t) for (b,d,t) in blocks_prime if w[k][b,d,t].x == 0]
-	    count = 1
-	    for h in range(1,l+1):
-	        d = 0 
+	    print('\nchequear optimalidad tomo: %.2f[s]' % (time.time()-init_time))
+	    print('\n Encontrar particion')
+	    init_time = time.time()
+	    #STEP 3: encontrar particion de blocks_prime 
+	    I = [ block for block in blocks_prime if w[k][block].x == 1]
+	    O = [ block for block in blocks_prime if w[k][block].x == 0]
+	    count = 0
+	    for h in range(1,eles[k-1]+1):
 	        if C[h,k-1].intersection(I):
+	            count += 1
 	            C[count,k] = C[h,k-1].intersection(I)
-	            d = 1
 	        if C[h,k-1].intersection(O):
-	            if d == 0:
-	                C[count,k] = C[h,k-1].intersection(O)
-	                count += 1
-	            else:
-	                C[count+1,k] = C[h,k-1].intersection(O)
-	                count += 2
-
-	    l = count-1
+	            count += 1
+	            C[count,k] = C[h,k-1].intersection(O)
+	    
+	    print('Determinar particion para k = %d tomo: %.2f' % (k,time.time()-init_time))
+	    eles[k] = count
 	    # STEP 4: resolver P2k
+	    print('\nConstruccion del modelo P2^k')
+	    init_time = time.time()
 	    model_p2k = Model()
 	    lmbda = {}
-	    for i in range(1,l+1):
+	    init_dv = time.time()
+	    for i in range(1,eles[k]+1):
 	        lmbda[i] = model_p2k.addVar(lb=0, ub=1, vtype=GRB.CONTINUOUS, name = "lambda%d" % i)
-
+	    
 	    model_p2k.update()
-	    c_lmbda = {}
-	    for j in range(1,l+1):
-	        c_lmbda[j] = quicksum([c_hat[b,d,t] for (b,d,t) in blocks_prime if (b,d,t) in C[j,k]])
-
-	    obj_p2k = quicksum([c_lmbda[j]*lmbda[j] for j in range(1,l+1)])
-	    obj_scale = 1e-2
-	    model_p2k.setObjective(obj_scale*obj_p2k, GRB.MAXIMIZE)
+	    print('Definir lmbda y actualizar: %.2f[s]' % (time.time()-init_dv))
+	    # fn objetivo del problema auxiliar P2^k
+	    init_sev = time.time()
+	    x_lmbda = {}
+	    for b in blocks_prime:
+	        #x_lmbda[b] = quicksum([lmbda[h]*(b in C[h,k])for h in range(1,eles[k]+1)])
+	        x_lmbda[b] = LinExpr([(b in C[h,k]) for h in range(1,eles[k]+1)],[lmbda[h] for h in range(1,eles[k]+1)])
+	    print('Proyectar variable en H^kx = 0 tomo: %.2f[s]' % (time.time()-init_sev))
+	    init_obj = time.time()
+	    cx_lmbda = quicksum([c[b,d,t]*(x_lmbda[b,d,t]-x_lmbda[b,d-1,t]) for b,d,t in blocks_prime if d>0 and t>0])\
+	                +quicksum([c[b,0,t]*(x_lmbda[b,0,t]-x_lmbda[b,ndestinations-1,t-1]) for (b,d,t) in blocks_prime if d==0 and t>0])\
+	                +quicksum([c[b,0,0]*x_lmbda[b,0,0] for b in blocks])
+	    obj_scale = 1e0
+	    model_p2k.setObjective(obj_scale*cx_lmbda, GRB.MAXIMIZE)
+	    print('Calcular fn obj y actualizarla: %.2f[s]' % (time.time()-init_obj))
 	    # agregamos las restricciones
 	    # para P2k con el cambio de variable
 	    # agregar restricciones de
 	    # precedencias.
+	    init_const = time.time()
 	    for t in range(nperiods-1):
 	        for b in blocks:
-	            model_p2k.addConstr(quicksum([lmbda[j]*((b,ndestinations-1,t) in C[j,k]) for j in range(1,l+1)]) <= 
-	                                quicksum([lmbda[j]*((b,0,t+1) in C[j,k]) for j in range(1,l+1)]))
+	            model_p2k.addConstr(x_lmbda[b,ndestinations-1,t] <= x_lmbda[b,0,t+1])
+	    
 	    for d in range(ndestinations-1):
 	        for t in range(nperiods):
 	            for b in blocks:
-	                model_p2k.addConstr(quicksum([lmbda[j]*((b,d,t) in C[j,k]) for j in range(1,l+1)]) <= 
-	                                     quicksum([lmbda[j]*((b,d+1,t) in C[j,k]) for j in range(1,l+1)]))
+	                model_p2k.addConstr(x_lmbda[b,d,t] <= x_lmbda[b,d+1,t])
 
 	    with open(prec_path, 'r') as f:
 	        for linea in f:
@@ -282,45 +307,49 @@ if __name__ == "__main__":
 	                for j in range(nvecinos):
 	                    b = int(linea_lista[j+2])
 	                    for t in range(nperiods):
-	                        model_p2k.addConstr(quicksum([lmbda[j]*((a,ndestinations-1,t) in C[j,k]) for j in range(1,l+1)]) <= 
-	                                    quicksum([lmbda[j]*((b,ndestinations-1,t) in C[j,k]) for j in range(1,l+1)]))
+	                        model_p2k.addConstr(x_lmbda[a,ndestinations-1,t] <= x_lmbda[b,ndestinations-1,t])
 	    
-	    # construir lado izquierdo de las side constraints
+	    # agregar side constraints: si at_by_key:
 	    LHS_lmbda = {}
+	    #for r in range(nresource_side_constraints):
+	    #    for t in range(nperiods):
+	    #        LHS_lmbda[r,t] = quicksum([q[b,r,d]*(quicksum([lmbda[j]*((b,d,t) in C[j,k]) for j in range(1,eles[k]+1)])-quicksum([lmbda[j]*((b,d-1,t) in C[j,k]) for j in range(1,eles[k]+1)])) for (b,d) in blockTimesDest])
+	    #        if t>0:
+	    #            LHS_lmbda[r,t] = LHS_lmbda[r,t] + quicksum([q[b,r,0]*(quicksum([lmbda[j]*((b,0,t) in C[j,k]) for j in range(1,eles[k]+1)])-quicksum([lmbda[j]*((b,ndestinations-1,t-1) in C[j,k]) for j in range(1,eles[k]+1)])) for b in blocks])
+	    #        else:
+	    #            LHS_lmbda[r,0] = LHS_lmbda[r,0] + quicksum([q[b,r,0]*(quicksum([lmbda[j]*((b,0,0) in C[j,k]) for j in range(1,eles[k]+1)])) for b in blocks])
+	    
 	    for r in range(nresource_side_constraints):
 	        for t in range(nperiods):
-	            LHS_lmbda[r,t] = quicksum([q[b,r,d]*(quicksum([lmbda[j]*((b,d,t) in C[j,k]) for j in range(1,l+1)])-quicksum([lmbda[j]*((b,d-1,t) in C[j,k]) for j in range(1,l+1)])) for (b,d) in blockTimesDest])
-	            if t>0:
-	                LHS_lmbda[r,t] = LHS_lmbda[r,t] + quicksum([q[b,r,0]*(quicksum([lmbda[j]*((b,0,t) in C[j,k]) for j in range(1,l+1)])-quicksum([lmbda[j]*((b,ndestinations-1,t-1) in C[j,k]) for j in range(1,l+1)])) for b in blocks])
+	            sumando_1 = quicksum([q[b,r,d]*(x_lmbda[b,d,t]-x_lmbda[b,d-1,t]) for b,d in blockTimesDest if d>0])
+	            if t > 0:
+	                LHS_lmbda[r,t] = sumando_1+quicksum([q[b,r,0]*(x_lmbda[b,0,t]-x_lmbda[b,ndestinations-1,t-1]) for b in blocks])
 	            else:
-	                LHS_lmbda[r,0] = LHS_lmbda[r,0] + quicksum([q[b,r,0]*(quicksum([lmbda[j]*((b,0,0) in C[j,k]) for j in range(1,l+1)])) for b in blocks])
-
+	                LHS_lmbda[r,0] = sumando_1+quicksum([q[b,r,0]*x_lmbda[b,0,0] for b in blocks])
+	    
 	    # agregar side constraints Dx <= d
 	    side_const = {}
-	    sc_scale = 1e-2 # ponderador para D (Dx <=d)
+	    sc_scale = 1e0 # ponderador para side constraints (Dx <=d)
 	    for r in range(nresource_side_constraints):
 	        for t in range(nperiods):
 	            side_const[r,t] = model_p2k.addConstr(sc_scale*LHS_lmbda[r,t] <= sc_scale*d_rhs[r,t], name='side_const[%d,%d]' % (r,t))
-
-	   # model_p2k.Params.Presolve = 0
+	        
+	    print('Agregar restricciones: %.2f[s]' % (time.time()-init_const))
+	    time_cm.append([time.time()-init_time])
+	    print('\nConstruccion del modelo P2^k tomo:%.2f' % (time.time()-init_time))
 	    print('\nResolviendo master problem: k=%d' % k)
+	    model_p2k.Params.presolve = 0
+	    model_p2k.setParam( 'OutputFlag', False )
 	    model_p2k.optimize()
 	    #break # para chequear si tuvo warnings en p2^k
-	    # definir z[k]
+	    # recuperar variables duales mu[k]
 	    mu[k] = {}
-	    z[k] = {}
 	    for r in range(nresource_side_constraints):
 	        for t in range(nperiods):
 	            mu[k][r,t] = side_const[r,t].pi
-
-	    for (b,d,t) in blocks_prime:
-	    	z[k][b,d,t] = sum(lmbda[j].x*((b,d,t) in C[j,k]) for j in range(1,l+1))
-	    
-	    opt = sum([c[b,d,t]*(z[k][b,d,t]-z[k][b,d-1,t]) for b,d,t in blocks_prime if d>0 and t>0])\
-	        +sum([c[b,0,t]*(z[k][b,0,t]-z[k][b,ndestinations-1,t-1]) for (b,d,t) in blocks_prime if d==0 and t>0])\
-	        +sum([c[b,0,0]*z[k][b,0,0] for b in blocks])
-	    if all([isclose(mu[k][r,t], mu[k-1][r,t]) for r,t in resourceTimesPeriod]): 
+	    if all([np.isclose(mu[k][r,t], mu[k-1][r,t]) for r,t in resourceTimesPeriod]): # Cambiar por una tolerancia!!!
+	        # recuperar z[k] la solucion del optimo
 	        print('Algoritmo termino: mu[%d] = mu[%d]' % (k,k-1))
-	        print('OPT de BZ: %.2f' % (model_p2k.ObjVal*(1/obj_scale)))
+	        print('Valor optimo de BZ: %.2f' % (model_p2k.ObjVal*(1/obj_scale)))
 	        break
 	    k += 1
