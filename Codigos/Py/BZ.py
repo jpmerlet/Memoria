@@ -304,7 +304,7 @@ if __name__ == "__main__":
 
 	    print('Agregar precedencias 2: %.2f[s]' % (time.time()-init_prec_2))
 	    init_prec_3 = time.time()
-	    with open(prec_path, 'r') as f:
+	    with open(prec_path, 'r') as f: # esta parte se puede mejorar y leer afuera una sola vez
 	        for linea in f:
 	            linea_lista = linea.split()
 	            nvecinos = int(linea_lista[1])
@@ -351,6 +351,7 @@ if __name__ == "__main__":
 	    model_p2k.Params.presolve = 0
 	    model_p2k.setParam( 'OutputFlag', False )
 	    model_p2k.optimize()
+	    print('Valor del problema maestro en iter k=%d: %.2f' % (k,model_p2k.ObjVal*(1/obj_scale)))
 	    #break # para chequear si tuvo warnings en p2^k
 	    # recuperar variables duales mu[k]
 	    mu[k] = {}
