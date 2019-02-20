@@ -10,7 +10,11 @@
 \usepackage{paralist} %util para listas compactas
 
 % paquetes agregados por mi
-\usepackage[linesnumbered,lined,commentsnumbered, ruled]{algorithm2e}
+% para escribir algoritmos
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+
+
 \usepackage{tikz}
 %\usetikzlibrary{positioning,chains,fit,shapes,calc}
 \usetikzlibrary{positioning, shapes, arrows,decorations.text}
@@ -36,6 +40,10 @@
 
 % macros jp
 \newcommand{\cev}[1]{\reflectbox{\ensuremath{\vec{\reflectbox{\ensuremath{#1}}}}}}
+\newcommand{\sfunction}[1]{\textsf{\textsc{#1}}}
+\algrenewcommand\algorithmicforall{\textbf{foreach}}
+\algrenewcommand\algorithmicindent{.8em}
+\newcommand{\val}[1]{\text{val}(#1)}
 
 %Teoremas, Lemas, etc.
 \theoremstyle{plain}
@@ -102,29 +110,29 @@ donde supondremos que $g^j(i)\geq g^j(i+1)$. Notar que en lo anterior queda expl
 
 
 
-\begin{algorithm}
-
-\caption{Glotón para $P_3$}
-\label{alg:gloton}
-\SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up}
-\SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress}
-\SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
-
-
-\Input{$G$, matriz de ganancia}
-\Output{$S_i$, para $i \in [T]$}
-
-\BlankLine
-
-
-$T_1$ $\leftarrow \{G_{j1}:j\in [n]\}$ \emph{inicializar $T_d$, multi-conjunto de trabajos disponibles}\;
-\For{$i\leftarrow 1$ \KwTo $T$}{
-%\emph{special treatment of the first element of line $i$}\;
-%\For{$j\leftarrow 2$ \KwTo $w$}{\label{forins}
-$S_{i}$ $\leftarrow$ los $m$ mejores subtrabajos de $T_t$\;
-$T_{i+1}$ $\leftarrow$ $T_t\setminus{S_i} \cup \{G_{j,k+1}: \text{para $k\in [T]$, $j \in [n]$, tal que $G_{jk}\in S_{i}$}\}$\;
-}
-\Return $S_i$, para $i \in [T]$
+%\begin{algorithm}
+%
+%\caption{Glotón para $P_3$}
+%\label{alg:gloton}
+%\SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up}
+%\SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress}
+%\SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+%
+%
+%\Input{$G$, matriz de ganancia}
+%\Output{$S_i$, para $i \in [T]$}
+%
+%\BlankLine
+%
+%
+%$T_1$ $\leftarrow \{G_{j1}:j\in [n]\}$ \emph{inicializar $T_d$, multi-conjunto de trabajos disponibles}\;
+%\For{$i\leftarrow 1$ \KwTo $T$}{
+%%\emph{special treatment of the first element of line $i$}\;
+%%\For{$j\leftarrow 2$ \KwTo $w$}{\label{forins}
+%$S_{i}$ $\leftarrow$ los $m$ mejores subtrabajos de $T_t$\;
+%$T_{i+1}$ $\leftarrow$ $T_t\setminus{S_i} \cup \{G_{j,k+1}: \text{para $k\in [T]$, $j \in [n]$, tal que $G_{jk}\in S_{i}$}\}$\;
+%}
+%\Return $S_i$, para $i \in [T]$
 %}
 %\If(\tcp*[f]{O(\Up,\This)==1}){\Up compatible with \This}{\label{ut}
 %\lIf{\Up $<$ \This}{\Union{\Up,\This}}
@@ -135,7 +143,7 @@ $T_{i+1}$ $\leftarrow$ $T_t\setminus{S_i} \cup \{G_{j,k+1}: \text{para $k\in [T]
 %\lForEach{element $e$ of the line $i$}{\FindCompress{p}}
 %}
 %\caption{disjoint decomposition}\label{algo_disjdecomp}
-\end{algorithm}
+%\end{algorithm}
 Para verificar que el resultado del algoritmo (\ref{alg:gloton}) es el optimo del problema $P_3$, se mostrará que el resultado es óptimo en el problema equivalente de flujo de costo mínimo en una red a especificar.\\~\\
 
 
@@ -408,11 +416,11 @@ Por otro lado, lo que pasa entre las capas Days y Works no es tan simple como lo
 \end{enumerate}
 
 \newpage
-\section{Maximización de trabajos en máquinas idénticas (MTMI), caso sin intercambio}
+\section{Asignación de trabajos en máquinas paralelas (ATMP), caso sin intercambio}
 
 Lo primero que se presentará es que el problema de $2$- partición se puede reducir a MTMP. Para fijar ideas, consideremos que cualquier instancia de MTMI se representará mediante la tupla $(\{g^i\}_{i=1}^n,\{x_i\}_{i=1}^n, T, m)$, donde $\{g^i\}_{i=1}^n$ corresponde a las curvas de ganancias marginales para cada trabajo $i \in [n]$; $\{x_i\}_{i=1}^n \subset \N$ son tales que $g^i(t) = 0$ para todo $t>x_i$; T el dead line, y finalmente $m$ al número de máquinas.\\~\\
 
-\subsection{Reducción de $2$-partición a MTMI.}
+\subsection{Reducción de $2$-partición a ATMP.}
 \begin{defi}(2-partición)
 \label{def:2part}
 Sea $S \subset \N$ un conjunto de naturales, tales que $\sum_{x \in S} x = 2 K$, para $K \in \N$. Dados $S$ y $K$, el problema de decisión asociado a 2 partición consiste en saber si existe una partición de $S = S_1 \cup S_2$ tal que:
@@ -434,7 +442,7 @@ Dadas las ganancias marginales anteriores para los trabajos $i \in [n]$, conside
 \end{equation}
 
 
-\subsection{Reducción de $3$-partición a MTMI.}
+\subsection{Reducción de $3$-partición a ATMP.}
 \begin{defi}{(3-partición)}
 Sea $S\subset \N$ tal que $|S| = 3m$, para algún $m \in \N$. $3$-partición corresponde al problema de desición siguiente: Es posible particionar el conjunto $S$ en $m$ $3$-tuplas, de manear que cada tupla sume lo mismo?
 \end{defi}
@@ -460,8 +468,161 @@ Para la equivalencia (\ref{eq:red3part}), es clave la condición  (\ref{eq:inst}
 
 Cada vez que se puede tener 3-particion, es claro (también para $2$-partición!) que se tendrá valor óptimo para MTMI igual a $Km$ (respectivamente $2K$).
 
-\subsection{Algunos resultados de aproximación para ATMP (asignación de trabajos en máquinas paralelas).}
+\subsection{Algunos resultados de aproximación para ATMP (caso ganancias lineales)}
 
-Consideremos 
+Sea $P$ el problema ATMP (asginaci\'on de trabajos en m\'aquinas paralelas). Se estudiar\'an algoritmos de aproximaci\'on para el caso en que las curvas de ganancia para cada trabajo $i \in [n]$ tienen la forma:
 
+
+%\begin{center}
+%\textit{Se tienen $n$ trabajos y $m$ m\'aquinas. Cada trabajo $i \in [n]$ tiene asociado una tasa de ganancia $p_i$ y un tiempo $x_i$ tales que la ganancia $g_i(t)$ obtenida por procesar dicho trabajo $t$ unidades de tiempo est\'a dada por}
+$$
+g_i(t) = \left\{\begin{array}{lr}
+p_i t & t \leq x_i \\
+p_i x_i & t>x_i
+\end{array}\right.
+$$
+donde $p_i$ es la tasa de ganancia asociada al trabajo $i-$\'esimo, y $x_i$ es el tiempo de proceso m\'aximo despu\'es del cual el trabajo $i$ deja de aportar beneficio. Suponagmos que los trabajos est\'an indexados de modo que:
+\begin{equation}
+\label{eq:trabajosOrd}
+p_1 \geq p_2 \geq \cdots \geq p_n
+\end{equation}
+
+%\textit{El objetivo es encontrar una asignaci\'on de trabajos a m\'aquinas de m\'aximo beneficio tal que:}
+%\begin{enumerate}
+%\item Sea $t_j$ el instante en que termina el \'ultimo trabajo la m\'aquina $j-$\'esima. Entonces $t_j \leq 1$.
+%
+%\item 
+%\end{enumerate}
+%\end{center}
+
+
+
+Sea $\text{OPT}$ el valor de alguna asignación \'optima para el problema $P$. A continuación se enuncian un par de proposiciones que serán \'utiles m\'as adelante (la demostraci'on del segundo queda pendiente).
+
+\begin{prop}
+Sea $A\subset [n]$ el conjunto de indices de alguna asignaci\'on \'optima. Entonces, se puede obtener una 
+asignaci\'on  $A'$ que cumple:
+\begin{itemize}
+\item El valor de $A'$, $\val{A'}$, es tal que $\val{A'} \geq \text{OPT}$
+\item Existe $\ell \in [n]$ tal que $A' = [\ell]$ 
+\end{itemize}
+\end{prop}
+\begin{proof}
+
+Sunpongase que $A$ no tiene esa forma, y existe algún $j \in [n]$ tal que $j+1,j-1 \in A$ y $j \not \in A$. Luego, basta tomar la máquina a la que fue asignado $j+1$ y reemplazar una parte del tiempo de proceso de $j+1$ para procesar $j$, y por (\ref{eq:trabajosOrd}) se obtendr\'a una asignaci\'on con valor al menos tan grande como el de $A$. Repitiendo este procedimiento para cada $j$ que $A$ se haya saltado, se concluye.
+\end{proof}
+
+\begin{prop}
+Existe una asignación óptima para $P$, $A$, tal que cumple lo siguiente:
+\begin{enumerate}
+\item Existe $\ell \in [n]$ tal que $A = [\ell]$
+\item $A$ corta a lo m\'as un trabajo por m\'aquina.
+\end{enumerate}
+\end{prop}
+
+
+%\begin{proof}
+%En efecto, considere una máquina $j$ y supongamos que existen dos trabajos $j_1$ y $j_2$ tales que cada uno se procesa un tiempo $h_1 < x_{j_1}$ y $h_2 < x_{j_2}$, respectivamente. Sin perdida de generalidad, supongamos que $p_1 \geq p_2$. Llamese por $A$ la presente asignaci\'on. Se separar\'a el an\'alisis en diferentes casos:
+%\begin{itemize}
+%\item \textbf{caso $h_2 \geq x_{j_1}-h_1$}:
+%
+%En este caso, como $p_1 \geq p_2$, basta con reemplazar el tiempo de proceso de $j_2$ por tiempo de proceso de $j_1$, de modo que $j_1$ no sea cortado, y $j_2$
+%\end{itemize}
+%\end{proof}
+
+
+\subsubsection{caso $x_i \leq 1/k \ \forall i \in [n]$}
+
+%Sea $P$ el problema ATMP, y considerese $P'$ el problema donde, en vez de tener la restricción de dead line igual a $1$, ahora solo se pide que cada trabajo asignado haya partido antes de $1$. Además, considere que los largos de cada trabajo cumplen la relación $x_i \leq 1/k$, para algún $k \in \N$ fijo. Como antes, hay $n$ trabajos a agendar y $m$ el número de máquinas. Pir último, considere el siguiente algoritmo:
+
+%Para el problema $P$, sea $\text{OPT}$ el valor de la asignación optima. A continuación enunciamos un par de proposisiones que serán utiles:
+
+Para el presente caso se mostrar\'a que un algoritmo glot\'on logra una $1+1/k$ aproximaci\'on. Para ello, considere las siguientes notaciones. Sea $j \in [m]$ una m\'aquina cualquiera:
+\begin{itemize}
+\item $t_j$: instante en que $j$ termina el \'ultimo trabajo.
+\item $t$: instante en que m\'as chico en que se termina el \'ultimo trabajo asignado.
+\item $\ell$: \'ultimo trabajo asignado.
+\item $m_\ell$: m\'aquina a la que se asigna el trabajo $\ell$.
+\end{itemize}
+con esto ahora se puede describir el algoritmo glot\'on para $P'$:
+\begin{algorithm}[H]
+\caption{Glotón para $P'$}\label{alg:greddyP'}
+\begin{algorithmic}[1]
+
+\State ordenar las pendientes de modo que $p_1 \geq p_2 \geq p_3 \geq \ldots \geq p_n$  \;
+\State $\ell \gets 0$\;
+\State $j \gets 1$\;
+\State $t \gets 0$\;
+\While {$t>1$}
+\State $\ell \gets \ell+1$\;
+	\State $m_\ell \gets j$\;
+	\State $j \gets \text{argmin}\{t_j: j \in [m]\}$\;
+	\State $t \gets \min\{t_j: j \in [m]\}$\;
+\EndWhile
+\State \textbf{end}
+\State \textbf{Return } $\{m_i\}_{i=1}^{\ell}$
+\end{algorithmic}
+\end{algorithm}
+Se denotará por ALG al algoritmo (\ref{alg:greddyP'}).\\~\\
+En el caso en que $x_i \leq 1/k\ \forall i \in [n]$, se tiene el siguiente resultado.
+\begin{prop}
+ALG induce una asignación para el problema $P$ que es una $1+1/k$ aproximación.
+\end{prop}
+
+\begin{proof}
+Sea $\ell \in [n]$ output de ALG, y $\{p_i\}_{i=1}^\ell$ las pendientes asociadas a dichos trabajos. Sean OPT y $\text{OPT}^{P'}$ los valores óptimos de $P$ y $P'$, respectivamente. Como una asignación factible para $P$ es una asignación factible para $P'$, necesariamente:
+\begin{equation}
+\label{eq:PP'}
+\text{OPT} \leq \text{OPT}^{P'}
+\end{equation}
+
+Por otro lado, la ganacia $\text{OPT}^{P'}$ puede ser dividida en el valor obtenido por los trabajos procesados hasta el instante $1$, y el valor asociado a los que se procesaron en instantes posteriores
+\begin{equation}
+\label{eq:divP'}
+\text{OPT}^{P'} = \text{OPT}^{P'}_{>1} + \text{OPT}^{P'}_{\leq 1}
+\end{equation}
+
+Se demostrar\'a entonces que
+\begin{equation}
+\label{eq:cotaP'}
+\text{OPT}^{P'}_{>1} \leq \frac{1}{k}\text{OPT}^{P'}_{\leq 1}
+\end{equation}
+
+Notar que de (\ref{eq:cotaP'}), (\ref{eq:divP'}) y (\ref{eq:PP'}) se deduce directamente que:
+\begin{equation*}
+\text{OPT}^P \leq \left( 1 + \frac{1}{k} \right)\text{OPT}^{P'}_{\leq 1}
+\end{equation*}
+
+Así, basta probar (\ref{eq:cotaP'}) para concluir el resultado. Para ello, considere por un momento los trabajos asignados a una máquina $j \in [m]$, y abusando de notación llamemos $p_1 \ldots p_l$ las pendientes de los trabajos asignados a dicha máquina, realizados en el mismo orden de indexación. El tiempo que ALG procesa el último trabajo en la máquina $j$, $x_\ell$, puede ser escrito como $x_\ell = \tilde{x}_\ell + x'_\ell$, donde $\tilde{x}_\ell$ es la cantidad de tiempo que ALG procesa $\ell$ hasta el instante $1$, y $x'_\ell$ es el tiempo que se procesa $\ell$ después del instante $1$. Sea $\text{OPT}^{P'}_{j,\leq 1}$ el valor asociado a los trabajos que se procesan hasta el instante $1$ en la máquina $j$, i.e.
+\begin{equation}
+\label{eq:ganjP}
+\text{OPT}^{P'}_{j,\leq 1} = \sum_{i <\ell} p_i x_i + p_\ell \tilde{x}_\ell
+\end{equation} 
+Luego, notemos que $1 = \sum_{i<\ell} x_i + \tilde{x}_{\ell}$, de donde
+
+\begin{equation*}
+ p_\ell(1-\tilde{x}_\ell) = p_\ell\sum_{i < \ell} x_i = \sum_{i < \ell} p_\ell x_i \leq  \sum_{i < \ell} p_i x_i
+\end{equation*}
+donde la última desigualdad viene del hecho de que ALG asigna los trabajos en orden decreciente de pendiente, de modo que $p_\ell \leq p_i \ \forall i \in [\ell]$. Del último desarrollo se tiene que
+\begin{equation}
+\label{eq:cotasGan}
+p_\ell \leq \sum_{j < \ell} p_j x_j + p_\ell \tilde{x}_\ell
+\end{equation}
+usando que $x_\ell \leq 1/k$, se deduce que
+\begin{equation}
+\label{eq:cotaAntesDps}
+p_\ell x'_\ell \leq \frac{1}{k}\left(\sum_{j < \ell} p_j x_j + p_\ell \tilde{x}_\ell \right) = \frac{1}{k}\text{OPT}^{P'}_{j,\leq 1}
+\end{equation}
+Así, considere ahora $\ell_1, \ldots, \ell_m$ los \'ultimos trabajos que cada m\'aquina procesa seg\'un ALG, y sus respectivos $\{p_{\ell_i}\}_{i=1}^m$ y $\{x_{\ell_i}\}_{i=1}^m$. Notar que
+$$
+\text{OPT}^{P'}_{>1} = \sum_{i = 1}^m p_{\ell_i}x'_{\ell_i}, \quad   \text{OPT}^{P'}_{\leq 1}  = \sum_{i=1}^m \text{OPT}^{P'}_{j_i,\leq 1}  
+$$
+Entonces, por la desigualdad (\ref{eq:cotaAntesDps}) se puede deducir que
+\begin{equation*}
+\text{OPT}^{P'}_{>1} = \sum_{i = 1}^m p_{\ell_i} x'_{\ell_i} \leq \sum_{i=1}^m \frac{1}{k} \text{OPT}^{P'}_{j_i,\leq 1} = \frac{1}{k} \text{OPT}^{P'}_{\leq 1}
+\end{equation*}
+lo que termina la demostración.
+\end{proof}
+\subsubsection{caso $x_i >1/k$}
+Para este caso, se puede resolver el problema de manera exacta en tiempo polinomial si se consideran $m$ y $k$ constantes. Para ello basta notar que la cantidad de trabajos que puede tener cada m\'aquina es menor que $km$, y entonces la cantidad de asignaciones factibles para $P$ en este caso es $O(m^{km})$
 \end{document}
