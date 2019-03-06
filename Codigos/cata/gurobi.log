@@ -712,3 +712,33 @@ Solution count 2: 1324 1226
 
 Optimal solution found (tolerance 1.00e-04)
 Best objective 1.324000000000e+03, best bound 1.324000000000e+03, gap 0.0000%
+
+Gurobi 8.1.0 (win64, Python) logging started 03/06/19 16:52:56
+
+Academic license - for non-commercial use only
+Changed value of parameter presolve to 0
+   Prev: -1  Min: -1  Max: 2  Default: -1
+Optimize a model with 1983 rows, 1404 columns and 5218 nonzeros
+Variable types: 0 continuous, 1404 integer (1404 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [1e+00, 1e+02]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 3e+00]
+Found heuristic solution: objective 1226.0000000
+Variable types: 0 continuous, 1404 integer (1404 binary)
+
+Root relaxation: objective 1.324000e+03, 165 iterations, 0.01 seconds
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0    1324.0000000 1324.00000  0.00%     -    0s
+
+Explored 0 nodes (165 simplex iterations) in 0.05 seconds
+Thread count was 8 (of 8 available processors)
+
+Solution count 2: 1324 1226 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 1.324000000000e+03, best bound 1.324000000000e+03, gap 0.0000%
